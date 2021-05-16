@@ -44,15 +44,12 @@ namespace Tavenem.Universe.Maps
             float proportionOfYear,
             bool equalArea = false)
         {
-            var (x, y) = equalArea
-                ? region.GetCylindricalEqualAreaProjectionFromLocalPosition(
-                    planet,
-                    position,
-                    ranges.GetLength(0))
-                : region.GetEquirectangularProjectionFromLocalPosition(
-                    planet,
-                    position,
-                    ranges.GetLength(0));
+            var (x, y) = region.GetProjectionFromLocalPosition(
+                planet,
+                position,
+                ranges.GetLength(0),
+                ranges.GetLength(1),
+                equalArea);
             return SurfaceMap.GetAnnualRangeValue(
                 ranges[x, y],
                 proportionOfYear);
@@ -82,15 +79,12 @@ namespace Tavenem.Universe.Maps
             Instant moment,
             bool equalArea = false)
         {
-            var (x, y) = equalArea
-                ? region.GetCylindricalEqualAreaProjectionFromLocalPosition(
-                    planet,
-                    position,
-                    ranges.GetLength(0))
-                : region.GetEquirectangularProjectionFromLocalPosition(
-                    planet,
-                    position,
-                    ranges.GetLength(0));
+            var (x, y) = region.GetProjectionFromLocalPosition(
+                planet,
+                position,
+                ranges.GetLength(0),
+                ranges.GetLength(1),
+                equalArea);
             return planet.GetAnnualRangeValue(
                 ranges[x, y],
                 moment);
@@ -124,15 +118,12 @@ namespace Tavenem.Universe.Maps
             float proportionOfYear,
             bool equalArea = false)
         {
-            var (x, y) = equalArea
-                ? region.GetCylindricalEqualAreaProjectionFromLocalPosition(
-                    planet,
-                    position,
-                    ranges.GetLength(0))
-                : region.GetEquirectangularProjectionFromLocalPosition(
-                    planet,
-                    position,
-                    ranges.GetLength(0));
+            var (x, y) = region.GetProjectionFromLocalPosition(
+                planet,
+                position,
+                ranges.GetLength(0),
+                ranges.GetLength(1),
+                equalArea);
             return SurfaceMap.GetAnnualRangeIsPositiveAtTime(ranges[x, y], proportionOfYear);
         }
 
@@ -161,15 +152,12 @@ namespace Tavenem.Universe.Maps
             Instant moment,
             bool equalArea = false)
         {
-            var (x, y) = equalArea
-                ? region.GetCylindricalEqualAreaProjectionFromLocalPosition(
-                    planet,
-                    position,
-                    ranges.GetLength(0))
-                : region.GetEquirectangularProjectionFromLocalPosition(
-                    planet,
-                    position,
-                    ranges.GetLength(0));
+            var (x, y) = region.GetProjectionFromLocalPosition(
+                planet,
+                position,
+                ranges.GetLength(0),
+                ranges.GetLength(1),
+                equalArea);
             return planet.GetAnnualRangeIsPositiveAtTime(ranges[x, y], moment);
         }
 
@@ -201,59 +189,6 @@ namespace Tavenem.Universe.Maps
                 (int)Math.Floor(resolution * options.AspectRatio),
                 resolution,
                 region.GetProjection(planet, options.EqualArea));
-
-        /// <summary>
-        /// Calculates the x and y coordinates on a cylindrical equal-area projection that
-        /// correspond to a given <paramref name="position"/> relative to the center of the
-        /// specified mapped <paramref name="region"/>, where 0,0 is at the top, left and is the
-        /// northwestern-most point on the map.
-        /// </summary>
-        /// <param name="region">The region being mapped.</param>
-        /// <param name="planet">The planet being mapped.</param>
-        /// <param name="position">A position relative to the center of <paramref
-        /// name="region"/>.</param>
-        /// <param name="resolution">The vertical resolution of the projection.</param>
-        /// <returns>
-        /// The latitude and longitude of the given coordinates, in radians.
-        /// </returns>
-        public static (int x, int y) GetCylindricalEqualAreaProjectionFromLocalPosition(
-            this SurfaceRegion region,
-            Planetoid planet,
-            Vector3 position,
-            int resolution)
-        {
-            var pos = region.PlanetaryPosition + position;
-            return SurfaceMap.GetCylindricalEqualAreaProjectionFromLatLong(
-                planet.VectorToLatitude(pos),
-                planet.VectorToLongitude(pos),
-                resolution,
-                region.GetProjection(planet, true));
-        }
-
-        /// <summary>
-        /// Calculates the x and y coordinates on a cylindrical equal-area projection that
-        /// correspond to a given latitude and longitude, where 0,0 is at the top, left and is the
-        /// northwestern-most point on the map.
-        /// </summary>
-        /// <param name="region">The region being mapped.</param>
-        /// <param name="planet">The planet being mapped.</param>
-        /// <param name="latitude">The latitude to convert, in radians.</param>
-        /// <param name="longitude">The longitude to convert.</param>
-        /// <param name="resolution">The vertical resolution of the projection.</param>
-        /// <returns>
-        /// The latitude and longitude of the given coordinates, in radians.
-        /// </returns>
-        public static (int x, int y) GetCylindricalEqualAreaProjectionFromLocalPosition(
-            this SurfaceRegion region,
-            Planetoid planet,
-            double latitude,
-            double longitude,
-            int resolution)
-            => SurfaceMap.GetCylindricalEqualAreaProjectionFromLatLong(
-                latitude,
-                longitude,
-                resolution,
-                region.GetProjection(planet, true));
 
         /// <summary>
         /// Gets the elevation at the given <paramref name="latitude"/> and <paramref
@@ -310,12 +245,16 @@ namespace Tavenem.Universe.Maps
             Planetoid planet,
             Image<L16> elevationMap,
             Vector3 position,
-            bool equalArea = false) => region.GetElevationAt(
-                planet,
-                elevationMap,
-                planet.VectorToLatitude(position),
-                planet.VectorToLongitude(position),
-                equalArea);
+            bool equalArea = false)
+        {
+            var pos = region.PlanetaryPosition + position;
+            return region.GetElevationAt(
+                  planet,
+                  elevationMap,
+                  planet.VectorToLatitude(pos),
+                  planet.VectorToLongitude(pos),
+                  equalArea);
+        }
 
         /// <summary>
         /// Produces an elevation map projection of this region.
@@ -337,59 +276,6 @@ namespace Tavenem.Universe.Maps
             Planetoid planet,
             int resolution,
             bool equalArea = false) => planet.GetElevationMap(resolution, region.GetProjection(planet, equalArea));
-
-        /// <summary>
-        /// Calculates the x and y coordinates on an equirectangular projection that correspond to a
-        /// given <paramref name="position"/> relative to the center of the specified mapped
-        /// <paramref name="region"/>, where 0,0 is at the top, left and is the northwestern-most
-        /// point on the map.
-        /// </summary>
-        /// <param name="region">The region being mapped.</param>
-        /// <param name="planet">The planet being mapped.</param>
-        /// <param name="position">A position relative to the center of <paramref
-        /// name="region"/>.</param>
-        /// <param name="resolution">The vertical resolution of the projection.</param>
-        /// <returns>
-        /// The latitude and longitude of the given coordinates, in radians.
-        /// </returns>
-        public static (int x, int y) GetEquirectangularProjectionFromLocalPosition(
-            this SurfaceRegion region,
-            Planetoid planet,
-            Vector3 position,
-            int resolution)
-        {
-            var pos = region.PlanetaryPosition + position;
-            return SurfaceMap.GetEquirectangularProjectionFromLatLong(
-                planet.VectorToLatitude(pos),
-                planet.VectorToLongitude(pos),
-                resolution,
-                region.GetProjection(planet));
-        }
-
-        /// <summary>
-        /// Calculates the x and y coordinates on an equirectangular projection that correspond to a
-        /// given latitude and longitude, where 0,0 is at the top, left and is the northwestern-most
-        /// point on the map.
-        /// </summary>
-        /// <param name="region">The region being mapped.</param>
-        /// <param name="planet">The planet being mapped.</param>
-        /// <param name="latitude">The latitude to convert, in radians.</param>
-        /// <param name="longitude">The longitude to convert.</param>
-        /// <param name="resolution">The vertical resolution of the projection.</param>
-        /// <returns>
-        /// The latitude and longitude of the given coordinates, in radians.
-        /// </returns>
-        public static (int x, int y) GetEquirectangularProjectionFromLocalPosition(
-            this SurfaceRegion region,
-            Planetoid planet,
-            double latitude,
-            double longitude,
-            int resolution)
-            => SurfaceMap.GetEquirectangularProjectionFromLatLong(
-                latitude,
-                longitude,
-                resolution,
-                region.GetProjection(planet));
 
         /// <summary>
         /// Calculates the latitude and longitude that correspond to a set of coordinates from a map
@@ -423,6 +309,25 @@ namespace Tavenem.Universe.Maps
                 region.GetProjection(planet, equalArea));
 
         /// <summary>
+        /// Calculates the latitude and longitude that correspond to a set of coordinates from a map
+        /// projection.
+        /// </summary>
+        /// <param name="region">The region being mapped.</param>
+        /// <param name="planet">The planet being mapped.</param>
+        /// <param name="position">The position.</param>
+        /// <returns>
+        /// The latitude and longitude of the given coordinates, in radians.
+        /// </returns>
+        public static (double latitude, double longitude) GetLatLonFromLocalPosition(
+            this SurfaceRegion region,
+            Planetoid planet,
+            Vector3 position)
+        {
+            var pos = region.PlanetaryPosition + position;
+            return (planet.VectorToLatitude(pos), planet.VectorToLongitude(pos));
+        }
+
+        /// <summary>
         /// Calculates the position that corresponds to a set of coordinates from a cylindrical
         /// equal-area projection.
         /// </summary>
@@ -433,46 +338,24 @@ namespace Tavenem.Universe.Maps
         /// <param name="y">The y coordinate of a point on a cylindrical equal-area projection, with
         /// zero as the northernmost point.</param>
         /// <param name="resolution">The vertical resolution of the projection.</param>
+        /// <param name="equalArea">
+        /// If <see langword="true"/> the projection is assumed to be a cylindrical equal-area
+        /// projection. Otherwise, an equirectangular projection is assumed.
+        /// </param>
         /// <returns>
         /// The local position of the given coordinates, in radians.
         /// </returns>
-        public static Vector3 GetLocalPositionFromCylindricalEqualAreaProjection(
+        public static Vector3 GetLocalPositionForMapProjection(
             this SurfaceRegion region,
             Planetoid planet,
             int x, int y,
-            int resolution)
+            int resolution,
+            bool equalArea = false)
         {
-            var (lat, lon) = SurfaceMap.GetLatLonOfCylindricalEqualAreaProjection(
+            var (lat, lon) = SurfaceMap.GetLatLonForMapProjection(
                 x, y,
                 resolution,
-                region.GetProjection(planet, true));
-            return planet.LatitudeAndLongitudeToVector(lat, lon) - region.PlanetaryPosition;
-        }
-
-        /// <summary>
-        /// Calculates the position that corresponds to a set of coordinates from an equirectangular
-        /// projection.
-        /// </summary>
-        /// <param name="region">The region being mapped.</param>
-        /// <param name="planet">The planet being mapped.</param>
-        /// <param name="x">The x coordinate of a point on an equirectangular projection, with zero
-        /// as the westernmost point.</param>
-        /// <param name="y">The y coordinate of a point on an equirectangular projection, with zero
-        /// as the northernmost point.</param>
-        /// <param name="resolution">The vertical resolution of the projection.</param>
-        /// <returns>
-        /// The local position of the given coordinates, in radians.
-        /// </returns>
-        public static Vector3 GetLocalPositionFromEquirectangularProjection(
-            this SurfaceRegion region,
-            Planetoid planet,
-            int x, int y,
-            int resolution)
-        {
-            var (lat, lon) = SurfaceMap.GetLatLonOfEquirectangularProjection(
-                x, y,
-                resolution,
-                region.GetProjection(planet, true));
+                region.GetProjection(planet, equalArea));
             return planet.LatitudeAndLongitudeToVector(lat, lon) - region.PlanetaryPosition;
         }
 
@@ -532,7 +415,12 @@ namespace Tavenem.Universe.Maps
             Image<L16> precipitationMap,
             Vector3 position,
             bool equalArea = false)
-            => region.GetPrecipitationAt(planet, precipitationMap, planet.VectorToLatitude(position), planet.VectorToLongitude(position), equalArea);
+            => region.GetPrecipitationAt(
+                planet,
+                precipitationMap,
+                planet.VectorToLatitude(position),
+                planet.VectorToLongitude(position),
+                equalArea);
 
         /// <summary>
         /// Produces precipitation and snowfall map projections of this region.
@@ -588,6 +476,43 @@ namespace Tavenem.Universe.Maps
                 planet.VectorToLatitude(region.PlanetaryPosition),
                 range: (double)((Frustum)region.Shape).FieldOfViewAngle,
                 equalArea: equalArea);
+
+        /// <summary>
+        /// Calculates the x and y coordinates on an equirectangular projection that correspond to a
+        /// given <paramref name="position"/> relative to the center of the specified mapped
+        /// <paramref name="region"/>, where 0,0 is at the top, left and is the northwestern-most
+        /// point on the map.
+        /// </summary>
+        /// <param name="region">The region being mapped.</param>
+        /// <param name="planet">The planet being mapped.</param>
+        /// <param name="position">
+        /// A position relative to the center of <paramref name="region"/>.
+        /// </param>
+        /// <param name="xResolution">The horizontal resolution of the projection.</param>
+        /// <param name="yResolution">The vertical resolution of the projection.</param>
+        /// <param name="equalArea">
+        /// If <see langword="true"/> the projection will be a cylindrical equal-area projection.
+        /// Otherwise, an equirectangular projection will be used.
+        /// </param>
+        /// <returns>
+        /// The latitude and longitude of the given coordinates, in radians.
+        /// </returns>
+        public static (int x, int y) GetProjectionFromLocalPosition(
+            this SurfaceRegion region,
+            Planetoid planet,
+            Vector3 position,
+            int xResolution,
+            int yResolution,
+            bool equalArea = false)
+        {
+            var pos = region.PlanetaryPosition + position;
+            return SurfaceMap.GetProjectionFromLatLong(
+                planet.VectorToLatitude(pos),
+                planet.VectorToLongitude(pos),
+                xResolution,
+                yResolution,
+                region.GetProjection(planet, equalArea));
+        }
 
         /// <summary>
         /// Calculates the approximate distance by which the given point is separated from its
@@ -648,8 +573,7 @@ namespace Tavenem.Universe.Maps
             ? snowfallMap.GetValueFromImage(
                 latitude,
                 longitude,
-                region.GetProjection(planet, equalArea),
-                true)
+                region.GetProjection(planet, equalArea))
                 * planet.Atmosphere.MaxSnowfall
             : double.NaN;
 
@@ -675,7 +599,45 @@ namespace Tavenem.Universe.Maps
             Image<L16> snowfallMap,
             Vector3 position,
             bool equalArea = false)
-            => region.GetSnowfallAt(planet, snowfallMap, planet.VectorToLatitude(position), planet.VectorToLongitude(position), equalArea);
+        {
+            var pos = region.PlanetaryPosition + position;
+            return region.GetSnowfallAt(
+                planet,
+                snowfallMap,
+                planet.VectorToLatitude(pos),
+                planet.VectorToLongitude(pos),
+                equalArea);
+        }
+
+        /// <summary>
+        /// Gets the surface temperature at the given position, in K.
+        /// </summary>
+        /// <param name="region">The region being mapped.</param>
+        /// <param name="planet">The mapped planet.</param>
+        /// <param name="temperatureMap">A temperature map.</param>
+        /// <param name="position">
+        /// A position relative to the center of <paramref name="region"/>.
+        /// </param>
+        /// <param name="equalArea">
+        /// If <see langword="true"/> the projection will be a cylindrical equal-area projection.
+        /// Otherwise, an equirectangular projection will be used.
+        /// </param>
+        /// <returns>The surface temperature, in K.</returns>
+        public static double GetSurfaceTemperature(
+            this SurfaceRegion region,
+            Planetoid planet,
+            Image<L16> temperatureMap,
+            Vector3 position,
+            bool equalArea = false)
+        {
+            var pos = region.PlanetaryPosition + position;
+            return region.GetSurfaceTemperature(
+                planet,
+                temperatureMap,
+                planet.VectorToLatitude(pos),
+                planet.VectorToLongitude(pos),
+                equalArea);
+        }
 
         /// <summary>
         /// Gets the surface temperature at the given position, in K.
@@ -700,11 +662,12 @@ namespace Tavenem.Universe.Maps
             Image<L16> temperatureMap,
             double latitude,
             double longitude,
-            bool equalArea = false) => SurfaceMapImage.GetTemperature(
-                temperatureMap,
+            bool equalArea = false) => region.IsPositionWithin(planet, latitude, longitude)
+            ? temperatureMap.GetTemperature(
                 latitude,
                 longitude,
-                region.GetProjection(planet, equalArea));
+                region.GetProjection(planet, equalArea))
+            : double.NaN;
 
         /// <summary>
         /// Calculates the surface temperature at the given position, in K.
@@ -834,17 +797,12 @@ namespace Tavenem.Universe.Maps
             T[,] values,
             bool equalArea = false)
         {
-            var (x, y) = equalArea
-                ? GetCylindricalEqualAreaProjectionFromLocalPosition(
-                    region,
-                    planet,
-                    position,
-                    values.GetLength(0))
-                : GetEquirectangularProjectionFromLocalPosition(
-                    region,
-                    planet,
-                    position,
-                    values.GetLength(0));
+            var (x, y) = region.GetProjectionFromLocalPosition(
+                planet,
+                position,
+                values.GetLength(0),
+                values.GetLength(1),
+                equalArea);
             return values[x, y];
         }
     }

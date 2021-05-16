@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0-preview
+### Added
+- Projection-agnostic methods for `SurfaceRegionMap`
+### Removed
+- Projection-specific methods from `SurfaceMap` and `SurfaceRegionMap`
+
 ## 0.3.0-preview
 ### Added
 - Projection-agnostic latitude-longitude method for `SurfaceRegionMap`

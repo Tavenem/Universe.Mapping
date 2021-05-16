@@ -67,6 +67,40 @@ namespace Tavenem.Universe.Maps
                 options);
 
         /// <summary>
+        /// Calculates the latitude and longitude that correspond to a set of coordinates from a map
+        /// projection.
+        /// </summary>
+        /// <param name="x">
+        /// The x coordinate of a point on a map projection, with zero as the westernmost point.
+        /// </param>
+        /// <param name="y">
+        /// The y coordinate of a point on a map projection, with zero as the northernmost point.
+        /// </param>
+        /// <param name="resolution">The vertical resolution of the projection.</param>
+        /// <param name="options">
+        /// The map projection options used.
+        /// </param>
+        /// <returns>
+        /// The latitude and longitude of the given coordinates, in radians, with negative values
+        /// representing the northern and western hemispheres.
+        /// </returns>
+        public static (double latitude, double longitude) GetLatLonForMapProjection(
+            int x, int y,
+            int resolution,
+            MapProjectionOptions? options = null) => options?.EqualArea == true
+            ? GetLatLonOfCylindricalEqualAreaProjectionFromAdjustedCoordinates(
+                x, y,
+                (int)Math.Floor(resolution * (options?.AspectRatio ?? Math.PI)),
+                resolution,
+                GetScale(resolution, options?.Range, true),
+                options ?? MapProjectionOptions.Default)
+            : GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(
+                x, y,
+                resolution,
+                GetScale(resolution, options?.Range),
+                options ?? MapProjectionOptions.Default);
+
+        /// <summary>
         /// Calculates the x and y coordinates on a map projection that correspond to a given
         /// latitude and longitude, where 0,0 is at the top, left and is the northwestern-most point
         /// on the map.
@@ -106,144 +140,6 @@ namespace Tavenem.Universe.Maps
                 xResolution,
                 yResolution,
                 GetScale(yResolution, options?.Range),
-                options ?? MapProjectionOptions.Default);
-
-        /// <summary>
-        /// Calculates the x and y coordinates on a cylindrical equal-area projection that
-        /// correspond to a given latitude and longitude, where 0,0 is at the top, left and is the
-        /// northwestern-most point on the map.
-        /// </summary>
-        /// <param name="latitude">The latitude to convert, in radians.</param>
-        /// <param name="longitude">The longitude to convert.</param>
-        /// <param name="resolution">The vertical resolution of the projection.</param>
-        /// <param name="options">
-        /// The map projection options used.
-        /// </param>
-        /// <returns>
-        /// The latitude and longitude of the given coordinates, in radians.
-        /// </returns>
-        public static (int x, int y) GetCylindricalEqualAreaProjectionFromLatLong(
-            double latitude,
-            double longitude,
-            int resolution,
-            MapProjectionOptions? options = null)
-            => GetCylindricalEqualAreaProjectionFromLatLongWithScale(
-                latitude, longitude,
-                resolution,
-                GetScale(resolution, options?.Range, true),
-                options ?? MapProjectionOptions.Default);
-
-        /// <summary>
-        /// Calculates the x and y coordinates on an equirectangular projection that correspond to a
-        /// given latitude and longitude, where 0,0 is at the top, left and is the northwestern-most
-        /// point on the map.
-        /// </summary>
-        /// <param name="latitude">The latitude to convert, in radians.</param>
-        /// <param name="longitude">The longitude to convert.</param>
-        /// <param name="resolution">The vertical resolution of the projection.</param>
-        /// <param name="options">
-        /// The map projection options used.
-        /// </param>
-        /// <returns>
-        /// The latitude and longitude of the given coordinates, in radians.
-        /// </returns>
-        public static (int x, int y) GetEquirectangularProjectionFromLatLong(
-            double latitude,
-            double longitude,
-            int resolution,
-            MapProjectionOptions? options = null)
-            => GetEquirectangularProjectionFromLatLongWithScale(
-                latitude, longitude,
-                resolution,
-                GetScale(resolution, options?.Range),
-                options ?? MapProjectionOptions.Default);
-
-        /// <summary>
-        /// Calculates the latitude and longitude that correspond to a set of coordinates from a
-        /// cylindrical equal-area projection.
-        /// </summary>
-        /// <param name="x">The x coordinate of a point on an cylindrical equal-area projection,
-        /// with zero as the westernmost point.</param>
-        /// <param name="y">The y coordinate of a point on an cylindrical equal-area projection,
-        /// with zero as the northernmost point.</param>
-        /// <param name="resolution">The vertical resolution of the projection.</param>
-        /// <param name="options">
-        /// The map projection options used.
-        /// </param>
-        /// <returns>
-        /// The latitude and longitude of the given coordinates, in radians.
-        /// </returns>
-        public static (double latitude, double longitude) GetLatLonOfCylindricalEqualAreaProjection(
-            int x, int y,
-            int resolution,
-            MapProjectionOptions? options = null)
-        {
-            var projection = options ?? new MapProjectionOptions(equalArea: true);
-            return GetLatLonOfCylindricalEqualAreaProjectionFromAdjustedCoordinates(
-                  x, y,
-                  (int)Math.Floor(resolution * projection.AspectRatio),
-                  resolution,
-                  GetScale(resolution, projection.Range, true),
-                  projection);
-        }
-
-        /// <summary>
-        /// Calculates the latitude and longitude that correspond to a set of coordinates from a map
-        /// projection.
-        /// </summary>
-        /// <param name="x">
-        /// The x coordinate of a point on a map projection, with zero as the westernmost point.
-        /// </param>
-        /// <param name="y">
-        /// The y coordinate of a point on a map projection, with zero as the northernmost point.
-        /// </param>
-        /// <param name="resolution">The vertical resolution of the projection.</param>
-        /// <param name="options">
-        /// The map projection options used.
-        /// </param>
-        /// <returns>
-        /// The latitude and longitude of the given coordinates, in radians, with negative values
-        /// representing the northern and western hemispheres.
-        /// </returns>
-        public static (double latitude, double longitude) GetLatLonForMapProjection(
-            int x, int y,
-            int resolution,
-            MapProjectionOptions? options = null) => options?.EqualArea == true
-            ? GetLatLonOfCylindricalEqualAreaProjectionFromAdjustedCoordinates(
-                x, y,
-                (int)Math.Floor(resolution * (options?.AspectRatio ?? Math.PI)),
-                resolution,
-                GetScale(resolution, options?.Range, true),
-                options ?? MapProjectionOptions.Default)
-            : GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(
-                x, y,
-                resolution,
-                GetScale(resolution, options?.Range),
-                options ?? MapProjectionOptions.Default);
-
-        /// <summary>
-        /// Calculates the latitude and longitude that correspond to a set of coordinates from an
-        /// equirectangular projection.
-        /// </summary>
-        /// <param name="x">The x coordinate of a point on an equirectangular projection, with zero
-        /// as the westernmost point.</param>
-        /// <param name="y">The y coordinate of a point on an equirectangular projection, with zero
-        /// as the northernmost point.</param>
-        /// <param name="resolution">The vertical resolution of the projection.</param>
-        /// <param name="options">
-        /// The map projection options used.
-        /// </param>
-        /// <returns>
-        /// The latitude and longitude of the given coordinates, in radians.
-        /// </returns>
-        public static (double latitude, double longitude) GetLatLonOfEquirectangularProjection(
-            int x, int y,
-            int resolution,
-            MapProjectionOptions? options = null)
-            => GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(
-                x, y,
-                resolution,
-                GetScale(resolution, options?.Range),
                 options ?? MapProjectionOptions.Default);
 
         /// <summary>
@@ -364,18 +260,6 @@ namespace Tavenem.Universe.Maps
 
         internal static (int x, int y) GetCylindricalEqualAreaProjectionFromLatLongWithScale(
             double latitude, double longitude,
-            int yResolution,
-            double scale,
-            MapProjectionOptions options)
-            => GetCylindricalEqualAreaProjectionFromLatLongWithScale(
-                latitude, longitude,
-                (int)Math.Floor(yResolution * options.AspectRatio),
-                yResolution,
-                scale,
-                options);
-
-        internal static (int x, int y) GetCylindricalEqualAreaProjectionFromLatLongWithScale(
-            double latitude, double longitude,
             int xResolution,
             int yResolution,
             double scale,
@@ -400,18 +284,6 @@ namespace Tavenem.Universe.Maps
             MapProjectionOptions options)
             => (int)Math.Round((yResolution / 2) + ((latitude - options.CentralParallel) * Math.PI / scale))
             .Clamp(0, yResolution - 1);
-
-        internal static (int x, int y) GetEquirectangularProjectionFromLatLongWithScale(
-            double latitude, double longitude,
-            int resolution,
-            double scale,
-            MapProjectionOptions options)
-            => GetEquirectangularProjectionFromLatLongWithScale(
-                latitude, longitude,
-                resolution * 2,
-                resolution,
-                scale,
-                options);
 
         internal static (int x, int y) GetEquirectangularProjectionFromLatLongWithScale(
             double latitude, double longitude,
