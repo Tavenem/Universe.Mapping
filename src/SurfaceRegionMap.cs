@@ -392,52 +392,35 @@ namespace Tavenem.Universe.Maps
                 region.GetProjection(planet));
 
         /// <summary>
-        /// Calculates the latitude and longitude that correspond to a set of coordinates from a
-        /// cylindrical equal-area projection.
+        /// Calculates the latitude and longitude that correspond to a set of coordinates from a map
+        /// projection.
         /// </summary>
         /// <param name="region">The region being mapped.</param>
         /// <param name="planet">The planet being mapped.</param>
-        /// <param name="x">The x coordinate of a point on a cylindrical equal-area projection, with
-        /// zero as the westernmost point.</param>
-        /// <param name="y">The y coordinate of a point on a cylindrical equal-area projection, with
-        /// zero as the northernmost point.</param>
+        /// <param name="x">
+        /// The x coordinate of a point on a map projection, with zero as the westernmost point.
+        /// </param>
+        /// <param name="y">
+        /// The y coordinate of a point on a map projection, with zero as the northernmost point.
+        /// </param>
         /// <param name="resolution">The vertical resolution of the projection.</param>
+        /// <param name="equalArea">
+        /// If <see langword="true"/> the projection will be a cylindrical equal-area projection.
+        /// Otherwise, an equirectangular projection will be used.
+        /// </param>
         /// <returns>
         /// The latitude and longitude of the given coordinates, in radians.
         /// </returns>
-        public static (double latitude, double longitude) GetLatLonOfCylindricalEqualAreaProjectionFromLocalPosition(
+        public static (double latitude, double longitude) GetLatLonFromLocalPosition(
             this SurfaceRegion region,
             Planetoid planet,
             int x, int y,
-            int resolution)
-            => SurfaceMap.GetLatLonOfCylindricalEqualAreaProjection(
+            int resolution,
+            bool equalArea = false)
+            => SurfaceMap.GetLatLonForMapProjection(
                 x, y,
                 resolution,
-                region.GetProjection(planet, true));
-
-        /// <summary>
-        /// Calculates the latitude and longitude that correspond to a set of coordinates from an
-        /// equirectangular projection.
-        /// </summary>
-        /// <param name="region">The region being mapped.</param>
-        /// <param name="planet">The planet being mapped.</param>
-        /// <param name="x">The x coordinate of a point on an equirectangular projection, with zero
-        /// as the westernmost point.</param>
-        /// <param name="y">The y coordinate of a point on an equirectangular projection, with zero
-        /// as the northernmost point.</param>
-        /// <param name="resolution">The vertical resolution of the projection.</param>
-        /// <returns>
-        /// The latitude and longitude of the given coordinates, in radians.
-        /// </returns>
-        public static (double latitude, double longitude) GetLatLonOfEquirectangularProjectionFromLocalPosition(
-            this SurfaceRegion region,
-            Planetoid planet,
-            int x, int y,
-            int resolution)
-            => SurfaceMap.GetLatLonOfEquirectangularProjection(
-                x, y,
-                resolution,
-                region.GetProjection(planet, true));
+                region.GetProjection(planet, equalArea));
 
         /// <summary>
         /// Calculates the position that corresponds to a set of coordinates from a cylindrical
@@ -693,6 +676,35 @@ namespace Tavenem.Universe.Maps
             Vector3 position,
             bool equalArea = false)
             => region.GetSnowfallAt(planet, snowfallMap, planet.VectorToLatitude(position), planet.VectorToLongitude(position), equalArea);
+
+        /// <summary>
+        /// Gets the surface temperature at the given position, in K.
+        /// </summary>
+        /// <param name="region">The region being mapped.</param>
+        /// <param name="planet">The mapped planet.</param>
+        /// <param name="temperatureMap">A temperature map.</param>
+        /// <param name="latitude">
+        /// The latitude at which to calculate the temperature, in radians.
+        /// </param>
+        /// <param name="longitude">
+        /// The latitude at which to calculate the temperature, in radians.
+        /// </param>
+        /// <param name="equalArea">
+        /// If <see langword="true"/> the projection will be a cylindrical equal-area projection.
+        /// Otherwise, an equirectangular projection will be used.
+        /// </param>
+        /// <returns>The surface temperature, in K.</returns>
+        public static double GetSurfaceTemperature(
+            this SurfaceRegion region,
+            Planetoid planet,
+            Image<L16> temperatureMap,
+            double latitude,
+            double longitude,
+            bool equalArea = false) => SurfaceMapImage.GetTemperature(
+                temperatureMap,
+                latitude,
+                longitude,
+                region.GetProjection(planet, equalArea));
 
         /// <summary>
         /// Calculates the surface temperature at the given position, in K.

@@ -615,6 +615,18 @@ namespace Tavenem.Universe.Maps
         /// Gets the temperature at the given position indicated by this map image, in K.
         /// </summary>
         /// <param name="image">A temperature map image.</param>
+        /// <param name="x">The x-coordinate for which to retrieve a value.</param>
+        /// <param name="y">The y-coordinate for which to retrieve a value.</param>
+        /// <returns>
+        /// The temperature at the given position indicated by this map image, in K.
+        /// </returns>
+        public static double GetTemperature(this Image<L16> image, int x, int y)
+            => image.GetValueFromImage(x, y) * TemperatureScaleFactor;
+
+        /// <summary>
+        /// Gets the temperature at the given position indicated by this map image, in K.
+        /// </summary>
+        /// <param name="image">A temperature map image.</param>
         /// <param name="latitude">The latitude for which to retrieve a value.</param>
         /// <param name="longitude">The longitude for which to retrieve a value.</param>
         /// <param name="options">The map projection used.</param>

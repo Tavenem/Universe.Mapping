@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0-preview
+### Added
+- Projection-agnostic latitude-longitude method for `SurfaceRegionMap`
+- Cartesian coordinate temperature method for `SurfaceMapImage`
+### Changed
+- Made some internal temperature methods public
+### Removed
+- Projection-specific extension methods from `SurfaceRegionMap`
+
 ## 0.2.0-preview
 ### Added
 - Make some internal methods public
