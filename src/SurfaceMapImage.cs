@@ -447,6 +447,40 @@ namespace Tavenem.Universe.Maps
         }
 
         /// <summary>
+        /// Generates a precipitation map image at the given proportion of a year.
+        /// </summary>
+        /// <param name="precipitationMaps">A set of precipitation maps.</param>
+        /// <param name="proportionOfYear">
+        /// The proportion of a full year at which the map is to be generated, assuming a year
+        /// begins and ends at the winter solstice in the northern hemisphere.
+        /// </param>
+        /// <returns>
+        /// A precipitation map image at the given proportion of a year. Pixel luminosity indicates
+        /// precipitation in mm/hr, relative to the <see cref="Atmosphere.MaxPrecipitation"/> of
+        /// the planet's <see cref="Atmosphere"/>.
+        /// </returns>
+        public static Image<L16> GetPrecipitationMap(
+            Image<L16>[] precipitationMaps,
+            double proportionOfYear)
+        {
+            var proportionPerMap = 1.0 / precipitationMaps.Length;
+            var season = (int)Math.Floor(proportionOfYear / proportionPerMap).Clamp(0, precipitationMaps.Length - 1);
+            var weight = proportionOfYear % proportionPerMap;
+            if (weight.IsNearlyZero())
+            {
+                return precipitationMaps[season].CloneAs<L16>();
+            }
+
+            var nextSeason = season == precipitationMaps.Length - 1
+                ? 0
+                : season + 1;
+            return InterpolateImages(
+                precipitationMaps[season],
+                precipitationMaps[nextSeason],
+                weight);
+        }
+
+        /// <summary>
         /// Gets the range of luminance values represented by this image.
         /// </summary>
         /// <param name="image">An image.</param>
@@ -666,6 +700,162 @@ namespace Tavenem.Universe.Maps
                   mapProjection,
                   elevationMapProjection,
                   new HillShadingOptions(true, false));
+        }
+
+        /// <summary>
+        /// Generates a snowfall map image at the given proportion of a year.
+        /// </summary>
+        /// <param name="snowfallMaps">A set of snowfall maps.</param>
+        /// <param name="proportionOfYear">
+        /// The proportion of a full year at which the map is to be generated, assuming a year
+        /// begins and ends at the winter solstice in the northern hemisphere.
+        /// </param>
+        /// <returns>
+        /// A snowfall map image at the given proportion of a year. Pixel luminosity indicates
+        /// snowfall in mm/hr, relative to the <see cref="Atmosphere.MaxPrecipitation"/> of the
+        /// planet's <see cref="Atmosphere"/>.
+        /// </returns>
+        public static Image<L16> GetSnowfallMap(
+            Image<L16>[] snowfallMaps,
+            double proportionOfYear)
+        {
+            var proportionPerMap = 1.0 / snowfallMaps.Length;
+            var season = (int)Math.Floor(proportionOfYear / proportionPerMap).Clamp(0, snowfallMaps.Length - 1);
+            var weight = proportionOfYear % proportionPerMap;
+            if (weight.IsNearlyZero())
+            {
+                return snowfallMaps[season].CloneAs<L16>();
+            }
+
+            var nextSeason = season == snowfallMaps.Length - 1
+                ? 0
+                : season + 1;
+            return InterpolateImages(
+                snowfallMaps[season],
+                snowfallMaps[nextSeason],
+                weight);
+        }
+
+        /// <summary>
+        /// Calculates the surface temperature at the given position, in K.
+        /// </summary>
+        /// <param name="winterTemperatures">A winter temperature map.</param>
+        /// <param name="summerTemperatures">A summer temperature map.</param>
+        /// <param name="proportionOfYear">
+        /// The proportion of a full year at which the map is to be generated, assuming a year
+        /// begins and ends at the winter solstice in the northern hemisphere.
+        /// </param>
+        /// <param name="latitude">
+        /// The latitude at which to calculate the temperature, in radians.
+        /// </param>
+        /// <param name="longitude">
+        /// The latitude at which to calculate the temperature, in radians.
+        /// </param>
+        /// <param name="options">The map projection used.</param>
+        /// <returns>The surface temperature, in K.</returns>
+        public static double GetSurfaceTemperature(
+            Image<L16> winterTemperatures,
+            Image<L16> summerTemperatures,
+            double proportionOfYear,
+            double latitude,
+            double longitude,
+            MapProjectionOptions? options = null)
+        {
+            var (x, y) = SurfaceMap.GetProjectionFromLatLong(latitude, longitude, winterTemperatures.Width, winterTemperatures.Height, options);
+            return InterpolateAmongImages(winterTemperatures, summerTemperatures, proportionOfYear, x, y)
+                * TemperatureScaleFactor;
+        }
+
+        /// <summary>
+        /// Calculates the range of temperatures at the given <paramref name="latitude"/> and
+        /// <paramref name="longitude"/>, in K.
+        /// </summary>
+        /// <param name="winterTemperatures">A winter temperature map.</param>
+        /// <param name="summerTemperatures">A summer temperature map.</param>
+        /// <param name="latitude">
+        /// The latitude at which to calculate the temperature range, in radians.
+        /// </param>
+        /// <param name="longitude">
+        /// The latitude at which to calculate the temperature range, in radians.
+        /// </param>
+        /// <param name="options">The map projection used.</param>
+        /// <returns>
+        /// A <see cref="FloatRange"/> giving the range of temperatures at the given <paramref
+        /// name="latitude"/> and <paramref name="longitude"/>, in K.
+        /// </returns>
+        public static FloatRange GetSurfaceTemperature(
+            Image<L16> winterTemperatures,
+            Image<L16> summerTemperatures,
+            double latitude,
+            double longitude,
+            MapProjectionOptions? options = null)
+        {
+            var winterTemperature = winterTemperatures.GetTemperature(latitude, longitude, options ?? MapProjectionOptions.Default);
+            var summerTemperature = summerTemperatures.GetTemperature(latitude, longitude, options ?? MapProjectionOptions.Default);
+            if (winterTemperature <= summerTemperature)
+            {
+                return new FloatRange((float)winterTemperature, (float)summerTemperature);
+            }
+            return new FloatRange((float)summerTemperature, (float)winterTemperature);
+        }
+
+        /// <summary>
+        /// Generates a temperature map image at the given proportion of a year.
+        /// </summary>
+        /// <param name="winterTemperatures">A winter temperature map.</param>
+        /// <param name="summerTemperatures">A summer temperature map.</param>
+        /// <param name="proportionOfYear">
+        /// The proportion of a full year at which the map is to be generated, assuming a year
+        /// begins and ends at the winter solstice in the northern hemisphere.
+        /// </param>
+        /// <returns>
+        /// A temperature map image at the given proportion of a year.
+        /// </returns>
+        public static Image<L16> GetTemperatureMap(
+            Image<L16> winterTemperatures,
+            Image<L16> summerTemperatures,
+            double proportionOfYear) => InterpolateImages(
+                winterTemperatures,
+                summerTemperatures,
+                proportionOfYear);
+
+        /// <summary>
+        /// Gets an equivalent <see cref="double"/> value for the pixel at the given coordinates.
+        /// </summary>
+        /// <param name="image">The image.</param>
+        /// <param name="x">The x-coordinate.</param>
+        /// <param name="y">The y-coordinate.</param>
+        /// <param name="canBeNegative">
+        /// Whether the values can be negative [-1–1] instead of only positive [0–1].
+        /// </param>
+        public static double GetValueFromImage(
+            this Image<L16> image,
+            int x,
+            int y,
+            bool canBeNegative = false) => canBeNegative
+            ? image[x, y].GetValueFromPixel_PosNeg()
+            : image[x, y].GetValueFromPixel_Pos();
+
+        /// <summary>
+        /// Gets the value indicated by the map image at the given coordinates.
+        /// </summary>
+        /// <param name="image">The image.</param>
+        /// <param name="latitude">The latitude.</param>
+        /// <param name="longitude">The longitude.</param>
+        /// <param name="options">The <see cref="MapProjectionOptions"/> used in the map
+        /// image.</param>
+        /// <param name="canBeNegative">
+        /// Whether the values can be negative [-1–1] instead of only positive [0–1].
+        /// </param>
+        public static double GetValueFromImage(
+            this Image<L16> image,
+            double latitude,
+            double longitude,
+            MapProjectionOptions options,
+            bool canBeNegative = false)
+        {
+            var (x, y) = SurfaceMap.GetProjectionFromLatLong(latitude, longitude, image.Width, image.Height, options);
+            return image.GetValueFromImage(x, y, canBeNegative);
         }
 
         /// <summary>
@@ -2686,14 +2876,6 @@ namespace Tavenem.Universe.Maps
                 }
             }
             return image;
-        }
-
-        internal static double GetValueFromImage(this Image<L16> image, double latitude, double longitude, MapProjectionOptions options, bool canBeNegative = false)
-        {
-            var (x, y) = SurfaceMap.GetProjectionFromLatLong(latitude, longitude, image.Width, image.Height, options);
-            return canBeNegative
-                ? image[x, y].GetValueFromPixel_PosNeg()
-                : image[x, y].GetValueFromPixel_Pos();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]

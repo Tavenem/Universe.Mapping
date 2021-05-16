@@ -552,45 +552,6 @@ namespace Tavenem.Universe.Maps
             => region.GetPrecipitationAt(planet, precipitationMap, planet.VectorToLatitude(position), planet.VectorToLongitude(position), equalArea);
 
         /// <summary>
-        /// Generates a precipitation map projection of this region at the given proportion of a
-        /// year.
-        /// </summary>
-        /// <param name="region">The region being mapped.</param>
-        /// <param name="precipitationMaps">A set of precipitation maps.</param>
-        /// <param name="proportionOfYear">
-        /// The proportion of a full year at which the map is to be generated, assuming a year
-        /// begins and ends at the winter solstice in the northern hemisphere.
-        /// </param>
-        /// <returns>
-        /// A precipitation map image for this planet at the given proportion of a year. Pixel
-        /// luminosity indicates precipitation in mm/hr, relative to the <see
-        /// cref="Atmosphere.MaxPrecipitation"/> of this planet's <see cref="Atmosphere"/>.
-        /// </returns>
-        public static Image<L16> GetPrecipitationMap(
-#pragma warning disable IDE0060, RCS1175 // Unused this parameter: make extension.
-            this SurfaceRegion? region,
-#pragma warning restore RCS1175 // Unused this parameter.
-            Image<L16>[] precipitationMaps,
-            double proportionOfYear)
-        {
-            var proportionPerMap = 1.0 / precipitationMaps.Length;
-            var season = (int)Math.Floor(proportionOfYear / proportionPerMap).Clamp(0, precipitationMaps.Length - 1);
-            var weight = proportionOfYear % proportionPerMap;
-            if (weight.IsNearlyZero())
-            {
-                return precipitationMaps[season].CloneAs<L16>();
-            }
-
-            var nextSeason = season == precipitationMaps.Length - 1
-                ? 0
-                : season + 1;
-            return SurfaceMapImage.InterpolateImages(
-                precipitationMaps[season],
-                precipitationMaps[nextSeason],
-                weight);
-        }
-
-        /// <summary>
         /// Produces precipitation and snowfall map projections of this region.
         /// </summary>
         /// <param name="region">The region being mapped.</param>
@@ -734,44 +695,6 @@ namespace Tavenem.Universe.Maps
             => region.GetSnowfallAt(planet, snowfallMap, planet.VectorToLatitude(position), planet.VectorToLongitude(position), equalArea);
 
         /// <summary>
-        /// Generates a snowfall map projection of this region at the given proportion of a year.
-        /// </summary>
-        /// <param name="region">The region being mapped.</param>
-        /// <param name="snowfallMaps">A set of snowfall maps.</param>
-        /// <param name="proportionOfYear">
-        /// The proportion of a full year at which the map is to be generated, assuming a year
-        /// begins and ends at the winter solstice in the northern hemisphere.
-        /// </param>
-        /// <returns>
-        /// A snowfall map image for this planet at the given proportion of a year. Pixel
-        /// luminosity indicates snowfall in mm/hr, relative to the <see
-        /// cref="Atmosphere.MaxPrecipitation"/> of this planet's <see cref="Atmosphere"/>.
-        /// </returns>
-        public static Image<L16> GetSnowfallMap(
-#pragma warning disable IDE0060, RCS1175 // Unused this parameter: make extension.
-            this SurfaceRegion? region,
-#pragma warning restore RCS1175 // Unused this parameter.
-            Image<L16>[] snowfallMaps,
-            double proportionOfYear)
-        {
-            var proportionPerMap = 1.0 / snowfallMaps.Length;
-            var season = (int)Math.Floor(proportionOfYear / proportionPerMap).Clamp(0, snowfallMaps.Length - 1);
-            var weight = proportionOfYear % proportionPerMap;
-            if (weight.IsNearlyZero())
-            {
-                return snowfallMaps[season].CloneAs<L16>();
-            }
-
-            var nextSeason = season == snowfallMaps.Length - 1
-                ? 0
-                : season + 1;
-            return SurfaceMapImage.InterpolateImages(
-                snowfallMaps[season],
-                snowfallMaps[nextSeason],
-                weight);
-        }
-
-        /// <summary>
         /// Calculates the surface temperature at the given position, in K.
         /// </summary>
         /// <param name="region">The region being mapped.</param>
@@ -853,30 +776,6 @@ namespace Tavenem.Universe.Maps
             }
             return new FloatRange((float)summerTemperature, (float)winterTemperature);
         }
-
-        /// <summary>
-        /// Generates a temperature map image for this planet at the given proportion of a year.
-        /// </summary>
-        /// <param name="region">The region being mapped.</param>
-        /// <param name="winterTemperatures">A winter temperature map.</param>
-        /// <param name="summerTemperatures">A summer temperature map.</param>
-        /// <param name="proportionOfYear">
-        /// The proportion of a full year at which the map is to be generated, assuming a year
-        /// begins and ends at the winter solstice in the northern hemisphere.
-        /// </param>
-        /// <returns>
-        /// A temperature map image for this planet at the given proportion of a year.
-        /// </returns>
-        public static Image<L16> GetTemperatureMap(
-#pragma warning disable IDE0060, RCS1175 // Unused this parameter: make extension.
-            this SurfaceRegion? region,
-#pragma warning restore RCS1175 // Unused this parameter.
-            Image<L16> winterTemperatures,
-            Image<L16> summerTemperatures,
-            double proportionOfYear) => SurfaceMapImage.InterpolateImages(
-                winterTemperatures,
-                summerTemperatures,
-                proportionOfYear);
 
         /// <summary>
         /// Generates new winter and summer temperature map projections of this region.

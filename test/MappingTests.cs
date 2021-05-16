@@ -511,7 +511,7 @@ namespace Tavenem.Universe.Test
                 for (var i = 0; i < 12; i++)
                 {
                     var proportionOfYear = proportionOfYearPerSeason * i;
-                    var seasonTemperatureMap = region.GetTemperatureMap(winterTemperatureMap, summerTemperatureMap, proportionOfYear);
+                    var seasonTemperatureMap = SurfaceMapImage.GetTemperatureMap(winterTemperatureMap, summerTemperatureMap, proportionOfYear);
 
                     using (var img = Image.Load<L16>(Path.Combine(folder!, "Precipitation", $"Precipitation_{i + 1:00}.png")))
                     {
@@ -689,7 +689,7 @@ namespace Tavenem.Universe.Test
                 for (var i = 0; i < 12; i++)
                 {
                     var proportionOfYear = proportionOfYearPerSeason * i;
-                    var seasonTemperatureMap = planet.GetTemperatureMap(winterTemperatureMap, summerTemperatureMap, proportionOfYear);
+                    var seasonTemperatureMap = SurfaceMapImage.GetTemperatureMap(winterTemperatureMap, summerTemperatureMap, proportionOfYear);
 
                     precipitationMaps[i] = Image.Load<L16>(Path.Combine(folder!, "Precipitation", $"Precipitation_{i + 1:00}.png"));
                     if (projection.EqualArea || precipitationMaps[i].Height < ProjectionResolution)
@@ -767,7 +767,7 @@ namespace Tavenem.Universe.Test
             for (var i = 0; i < Seasons; i++)
             {
                 var proportionOfYear = i / (float)Seasons;
-                using (var map = planet.GetTemperatureMap(winterTemperatureMap, summerTemperatureMap, proportionOfYear))
+                using (var map = SurfaceMapImage.GetTemperatureMap(winterTemperatureMap, summerTemperatureMap, proportionOfYear))
                 {
                     using var img = map.TemperatureMapToImage();
                     img.SaveAsPng(Path.Combine(_OutputPath!, @$"Seasons\{filePrefix}TemperatureImage{fileSuffix}_{i:00}.png"));

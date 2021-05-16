@@ -82,7 +82,7 @@ namespace Tavenem.Universe.Maps
             bool surface = true,
             MapProjectionOptions? options = null)
         {
-            var surfaceTemp = planet.GetSurfaceTemperature(winterTemperatures, summerTemperatures, proportionOfYear, latitude, longitude, options);
+            var surfaceTemp = SurfaceMapImage.GetSurfaceTemperature(winterTemperatures, summerTemperatures, proportionOfYear, latitude, longitude, options);
             var tempAtElevation = planet.GetTemperatureAtElevation(surfaceTemp, altitude, surface);
             return planet.Atmosphere.GetAtmosphericDensity(planet, tempAtElevation, altitude);
         }
@@ -127,7 +127,7 @@ namespace Tavenem.Universe.Maps
             bool surface = true,
             MapProjectionOptions? options = null)
         {
-            var surfaceTemp = planet.GetSurfaceTemperature(winterTemperatures, summerTemperatures, proportionOfYear, latitude, longitude, options);
+            var surfaceTemp = SurfaceMapImage.GetSurfaceTemperature(winterTemperatures, summerTemperatures, proportionOfYear, latitude, longitude, options);
             var tempAtElevation = planet.GetTemperatureAtElevation(surfaceTemp, altitude, surface);
             return planet.Atmosphere.GetAtmosphericDrag(planet, tempAtElevation, altitude, speed);
         }
@@ -174,7 +174,7 @@ namespace Tavenem.Universe.Maps
             MapProjectionOptions? options = null)
         {
             var elevation = planet.GetElevationAt(elevationMap, latitude, longitude, options);
-            var surfaceTemp = planet.GetSurfaceTemperature(winterTemperatures, summerTemperatures, proportionOfYear, latitude, longitude, options);
+            var surfaceTemp = SurfaceMapImage.GetSurfaceTemperature(winterTemperatures, summerTemperatures, proportionOfYear, latitude, longitude, options);
             var tempAtElevation = planet.GetTemperatureAtElevation(surfaceTemp, elevation, surface);
             return planet.Atmosphere.GetAtmosphericPressure(planet, tempAtElevation, elevation);
         }
@@ -417,44 +417,6 @@ namespace Tavenem.Universe.Maps
             => planet.GetPrecipitationAt(precipitationMap, planet.VectorToLatitude(position), planet.VectorToLongitude(position), options);
 
         /// <summary>
-        /// Generates a precipitation map image for this planet at the given proportion of a year.
-        /// </summary>
-        /// <param name="planet">The mapped planet.</param>
-        /// <param name="precipitationMaps">A set of precipitation maps.</param>
-        /// <param name="proportionOfYear">
-        /// The proportion of a full year at which the map is to be generated, assuming a year
-        /// begins and ends at the winter solstice in the northern hemisphere.
-        /// </param>
-        /// <returns>
-        /// A precipitation map image for this planet at the given proportion of a year. Pixel
-        /// luminosity indicates precipitation in mm/hr, relative to the <see
-        /// cref="Atmosphere.MaxPrecipitation"/> of this planet's <see cref="Atmosphere"/>.
-        /// </returns>
-        public static Image<L16> GetPrecipitationMap(
-#pragma warning disable IDE0060, RCS1175 // Unused this parameter: make extension.
-            this Planetoid? planet,
-#pragma warning restore RCS1175 // Unused this parameter.
-            Image<L16>[] precipitationMaps,
-            double proportionOfYear)
-        {
-            var proportionPerMap = 1.0 / precipitationMaps.Length;
-            var season = (int)Math.Floor(proportionOfYear / proportionPerMap).Clamp(0, precipitationMaps.Length - 1);
-            var weight = proportionOfYear % proportionPerMap;
-            if (weight.IsNearlyZero())
-            {
-                return precipitationMaps[season].CloneAs<L16>();
-            }
-
-            var nextSeason = season == precipitationMaps.Length - 1
-                ? 0
-                : season + 1;
-            return SurfaceMapImage.InterpolateImages(
-                precipitationMaps[season],
-                precipitationMaps[nextSeason],
-                weight);
-        }
-
-        /// <summary>
         /// Gets the range of precipitations represented by the given precipitation map, in mm/hr.
         /// </summary>
         /// <param name="planet">The planet mapped.</param>
@@ -541,44 +503,6 @@ namespace Tavenem.Universe.Maps
             => planet.GetSnowfallAt(snowfallMap, planet.VectorToLatitude(position), planet.VectorToLongitude(position), options);
 
         /// <summary>
-        /// Generates a snowfall map image for this planet at the given proportion of a year.
-        /// </summary>
-        /// <param name="planet">The mapped planet.</param>
-        /// <param name="snowfallMaps">A set of snowfall maps.</param>
-        /// <param name="proportionOfYear">
-        /// The proportion of a full year at which the map is to be generated, assuming a year
-        /// begins and ends at the winter solstice in the northern hemisphere.
-        /// </param>
-        /// <returns>
-        /// A snowfall map image for this planet at the given proportion of a year. Pixel
-        /// luminosity indicates snowfall in mm/hr, relative to the <see
-        /// cref="Atmosphere.MaxPrecipitation"/> of this planet's <see cref="Atmosphere"/>.
-        /// </returns>
-        public static Image<L16> GetSnowfallMap(
-#pragma warning disable IDE0060, RCS1175 // Unused this parameter: make extension.
-            this Planetoid? planet,
-#pragma warning restore RCS1175 // Unused this parameter.
-            Image<L16>[] snowfallMaps,
-            double proportionOfYear)
-        {
-            var proportionPerMap = 1.0 / snowfallMaps.Length;
-            var season = (int)Math.Floor(proportionOfYear / proportionPerMap).Clamp(0, snowfallMaps.Length - 1);
-            var weight = proportionOfYear % proportionPerMap;
-            if (weight.IsNearlyZero())
-            {
-                return snowfallMaps[season].CloneAs<L16>();
-            }
-
-            var nextSeason = season == snowfallMaps.Length - 1
-                ? 0
-                : season + 1;
-            return SurfaceMapImage.InterpolateImages(
-                snowfallMaps[season],
-                snowfallMaps[nextSeason],
-                weight);
-        }
-
-        /// <summary>
         /// Gets the range of snowfall represented by this map image, in mm/hr.
         /// </summary>
         /// <param name="planet">The planet mapped.</param>
@@ -595,101 +519,6 @@ namespace Tavenem.Universe.Maps
                 (float)(range.Average * planet.Atmosphere.MaxSnowfall),
                 (float)(range.Max * planet.Atmosphere.MaxSnowfall));
         }
-
-        /// <summary>
-        /// Calculates the surface temperature at the given position, in K.
-        /// </summary>
-        /// <param name="planet">The mapped planet.</param>
-        /// <param name="winterTemperatures">A winter temperature map.</param>
-        /// <param name="summerTemperatures">A summer temperature map.</param>
-        /// <param name="proportionOfYear">
-        /// The proportion of a full year at which the map is to be generated, assuming a year
-        /// begins and ends at the winter solstice in the northern hemisphere.
-        /// </param>
-        /// <param name="latitude">
-        /// The latitude at which to calculate the temperature, in radians.
-        /// </param>
-        /// <param name="longitude">
-        /// The latitude at which to calculate the temperature, in radians.
-        /// </param>
-        /// <param name="options">The map projection used.</param>
-        /// <returns>The surface temperature, in K.</returns>
-        public static double GetSurfaceTemperature(
-#pragma warning disable IDE0060, RCS1175 // Unused this parameter: make extension.
-            this Planetoid? planet,
-#pragma warning restore RCS1175 // Unused this parameter.
-            Image<L16> winterTemperatures,
-            Image<L16> summerTemperatures,
-            double proportionOfYear,
-            double latitude,
-            double longitude,
-            MapProjectionOptions? options = null)
-        {
-            var (x, y) = SurfaceMap.GetProjectionFromLatLong(latitude, longitude, winterTemperatures.Width, winterTemperatures.Height, options);
-            return SurfaceMapImage.InterpolateAmongImages(winterTemperatures, summerTemperatures, proportionOfYear, x, y)
-                * SurfaceMapImage.TemperatureScaleFactor;
-        }
-
-        /// <summary>
-        /// Calculates the range of temperatures at the given <paramref name="latitude"/> and
-        /// <paramref name="longitude"/>, in K.
-        /// </summary>
-        /// <param name="planet">The mapped planet.</param>
-        /// <param name="winterTemperatures">A winter temperature map.</param>
-        /// <param name="summerTemperatures">A summer temperature map.</param>
-        /// <param name="latitude">
-        /// The latitude at which to calculate the temperature range, in radians.
-        /// </param>
-        /// <param name="longitude">
-        /// The latitude at which to calculate the temperature range, in radians.
-        /// </param>
-        /// <param name="options">The map projection used.</param>
-        /// <returns>
-        /// A <see cref="FloatRange"/> giving the range of temperatures at the given <paramref
-        /// name="latitude"/> and <paramref name="longitude"/>, in K.
-        /// </returns>
-        public static FloatRange GetSurfaceTemperature(
-#pragma warning disable IDE0060, RCS1175 // Unused this parameter: make extension.
-            this Planetoid? planet,
-#pragma warning restore RCS1175 // Unused this parameter.
-            Image<L16> winterTemperatures,
-            Image<L16> summerTemperatures,
-            double latitude,
-            double longitude,
-            MapProjectionOptions? options = null)
-        {
-            var winterTemperature = winterTemperatures.GetTemperature(latitude, longitude, options ?? MapProjectionOptions.Default);
-            var summerTemperature = summerTemperatures.GetTemperature(latitude, longitude, options ?? MapProjectionOptions.Default);
-            if (winterTemperature <= summerTemperature)
-            {
-                return new FloatRange((float)winterTemperature, (float)summerTemperature);
-            }
-            return new FloatRange((float)summerTemperature, (float)winterTemperature);
-        }
-
-        /// <summary>
-        /// Generates a temperature map image for this planet at the given proportion of a year.
-        /// </summary>
-        /// <param name="planet">The mapped planet.</param>
-        /// <param name="winterTemperatures">A winter temperature map.</param>
-        /// <param name="summerTemperatures">A summer temperature map.</param>
-        /// <param name="proportionOfYear">
-        /// The proportion of a full year at which the map is to be generated, assuming a year
-        /// begins and ends at the winter solstice in the northern hemisphere.
-        /// </param>
-        /// <returns>
-        /// A temperature map image for this planet at the given proportion of a year.
-        /// </returns>
-        public static Image<L16> GetTemperatureMap(
-#pragma warning disable IDE0060, RCS1175 // Unused this parameter: make extension.
-            this Planetoid? planet,
-#pragma warning restore RCS1175 // Unused this parameter.
-            Image<L16> winterTemperatures,
-            Image<L16> summerTemperatures,
-            double proportionOfYear) => SurfaceMapImage.InterpolateImages(
-                winterTemperatures,
-                summerTemperatures,
-                proportionOfYear);
 
         /// <summary>
         /// Generates new winter and summer temperature map images.
