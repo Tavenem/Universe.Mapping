@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1-preview
+### Updated
+- Update dependencies
+
 ## 0.4.0-preview
 ### Added
 - Projection-agnostic methods for `SurfaceRegionMap`

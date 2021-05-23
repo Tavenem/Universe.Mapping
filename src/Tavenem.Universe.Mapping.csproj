@@ -37,7 +37,7 @@
     </PackageReference>
     <PackageReference Include="SixLabors.ImageSharp" Version="1.0.3" />
     <PackageReference Include="Tavenem.Extensions" Version="1.1.0" />
-    <PackageReference Include="Tavenem.Universe" Version="0.2.1-preview" />
+    <PackageReference Include="Tavenem.Universe" Version="0.3.2-preview" />
   </ItemGroup>
 
 </Project>
