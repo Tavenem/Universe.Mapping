@@ -20,16 +20,16 @@ jobs:
           include-prerelease: true
 
       - name: Install dependencies
-        run: dotnet restore
+        run: dotnet restore -s https://api.nuget.org/v3/index.json -s https://www.myget.org/F/sixlabors/api/v3/index.json
         working-directory: ./src
 
       - name: Build
         run: dotnet build --configuration Release -p:Version=${{ env.VERSION }} --no-restore --nologo
         working-directory: ./src
 
-      - name: Test
-        run: dotnet test --no-restore --verbosity normal
-        working-directory: ./src
+      #- name: Test
+      #  run: dotnet test --no-restore --verbosity normal
+      #  working-directory: ./src
 
       - name: Pack
         run: dotnet pack --include-symbols -p:SymbolPackageFormat=snupkg -p:PackageVersion=${{ env.VERSION }} --configuration Release --no-build --nologo --output .
