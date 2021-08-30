@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0-preview
+### Changed
+- Update to .NET 6 preview
+- Update to C# 10 preview
+
 ## 0.4.1-preview
 ### Updated
 - Update dependencies
