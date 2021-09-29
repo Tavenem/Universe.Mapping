@@ -5,6 +5,7 @@
     <LangVersion>preview</LangVersion>
     <EnablePreviewFeatures>true</EnablePreviewFeatures>
     <Nullable>enable</Nullable>
+	<ImplicitUsings>enable</ImplicitUsings>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
@@ -36,9 +37,9 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="SixLabors.ImageSharp" Version="1.0.4-alpha.0.69" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="1.0.4" />
     <PackageReference Include="Tavenem.Extensions" Version="2.0.0-preview.6" />
-    <PackageReference Include="Tavenem.Universe" Version="0.4.1-preview" />
+    <PackageReference Include="Tavenem.Universe" Version="0.4.2-preview" />
   </ItemGroup>
 
 </Project>
