@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.0-preview
+### Changed
+- Update to .NET 7 preview
+
 ## 0.5.1-preview - 0.5.2-preview
 ### Updated
 - Update dependencies

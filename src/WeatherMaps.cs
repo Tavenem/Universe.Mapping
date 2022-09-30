@@ -123,20 +123,21 @@ public struct WeatherMaps : ISerializable
     {
         var projection = options ?? MapProjectionOptions.Default;
 
-        XLength = (int)Math.Floor(projection.AspectRatio * resolution);
+        var xLength = (int)Math.Floor(projection.AspectRatio * resolution);
+        XLength = xLength;
         YLength = resolution;
 
-        BiomeMap = new BiomeType[XLength][];
-        ClimateMap = new ClimateType[XLength][];
-        var humidityMap = new HumidityType[XLength][];
-        SeaIceRangeMap = new FloatRange[XLength][];
+        var biomeMap = new BiomeType[xLength][];
+        var climateMap = new ClimateType[xLength][];
+        var humidityMap = new HumidityType[xLength][];
+        var seaIceRangeMap = new FloatRange[xLength][];
 
-        for (var x = 0; x < XLength; x++)
+        for (var x = 0; x < xLength; x++)
         {
-            BiomeMap[x] = new BiomeType[YLength];
-            ClimateMap[x] = new ClimateType[YLength];
-            humidityMap[x] = new HumidityType[YLength];
-            SeaIceRangeMap[x] = new FloatRange[YLength];
+            biomeMap[x] = new BiomeType[resolution];
+            climateMap[x] = new ClimateType[resolution];
+            humidityMap[x] = new HumidityType[resolution];
+            seaIceRangeMap[x] = new FloatRange[resolution];
         }
 
         var scale = SurfaceMap.GetScale(resolution, projection.Range);
@@ -152,201 +153,226 @@ public struct WeatherMaps : ISerializable
             ? elevationScale
             : SurfaceMap.GetScale(precipitationMap.Height, projection.Range);
 
+        var elevationYs = new int[resolution];
+        var normalizedElevations = new double[resolution][];
         var totalElevation = 0.0;
-        var minTemperature = 5000.0f;
-        var maxTemperature = 0.0f;
-        var totalTemperature = 0.0f;
-        var totalPrecipiation = 0.0;
         var xToEX = new Dictionary<int, int>();
         var xToWX = new Dictionary<int, int>();
         var xToSX = new Dictionary<int, int>();
         var xToPX = new Dictionary<int, int>();
-        for (var y = 0; y < YLength; y++)
+        elevationMap.ProcessPixelRows(accessor =>
         {
-            var latitude = projection.EqualArea
-                ? SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(y, resolution, scale, projection)
-                : SurfaceMap.GetLatitudeOfEquirectangularProjection(y, resolution, scale, projection);
+            for (var y = 0; y < resolution; y++)
+            {
+                var latitude = projection.EqualArea
+                    ? SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(y, resolution, scale, projection)
+                    : SurfaceMap.GetLatitudeOfEquirectangularProjection(y, resolution, scale, projection);
 
-            var elevationY = projection.EqualArea
-                ? SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, elevationMap.Height, elevationScale, projection)
-                : SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, elevationMap.Height, elevationScale, projection);
-            var elevationSpan = elevationMap.GetPixelRowSpan(elevationY);
-
-            int winterY;
-            if (winterTemperatureMap.Height == elevationMap.Height)
-            {
-                winterY = elevationY;
-            }
-            else if (projection.EqualArea)
-            {
-                winterY = SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, winterTemperatureMap.Height, winterScale, projection);
-            }
-            else
-            {
-                winterY = SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, winterTemperatureMap.Height, winterScale, projection);
-            }
-
-            var winterSpan = winterTemperatureMap.GetPixelRowSpan(winterY);
-
-            int summerY;
-            if (summerTemperatureMap.Height == elevationMap.Height)
-            {
-                summerY = elevationY;
-            }
-            else if (projection.EqualArea)
-            {
-                summerY = SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, summerTemperatureMap.Height, summerScale, projection);
-            }
-            else
-            {
-                summerY = SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, summerTemperatureMap.Height, summerScale, projection);
-            }
-
-            var summerSpan = summerTemperatureMap.GetPixelRowSpan(summerY);
-
-            int precipitationY;
-            if (precipitationMap.Height == elevationMap.Height)
-            {
-                precipitationY = elevationY;
-            }
-            else if (projection.EqualArea)
-            {
-                precipitationY = SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, precipitationMap.Height, precipitationScale, projection);
-            }
-            else
-            {
-                precipitationY = SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, precipitationMap.Height, precipitationScale, projection);
-            }
-
-            var precipitationSpan = precipitationMap.GetPixelRowSpan(precipitationY);
-
-            for (var x = 0; x < XLength; x++)
-            {
-                if (!xToEX.TryGetValue(x, out var elevationX))
+                elevationYs[y] = projection.EqualArea
+                    ? SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, elevationMap.Height, elevationScale, projection)
+                    : SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, elevationMap.Height, elevationScale, projection);
+                var elevationSpan = accessor.GetRowSpan(elevationYs[y]);
+                for (var x = 0; x < xLength; x++)
                 {
-                    var longitude = projection.EqualArea
-                        ? SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(x, XLength, scale, projection)
-                        : SurfaceMap.GetLongitudeOfEquirectangularProjection(x, XLength, stretch, projection);
+                    normalizedElevations[y] = new double[xLength];
 
-                    elevationX = projection.EqualArea
-                        ? SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, elevationMap.Width, elevationScale, projection)
-                        : SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, elevationMap.Width, elevationScale, projection);
-                    int wX;
-                    if (winterTemperatureMap.Width == elevationMap.Width)
+                    if (!xToEX.TryGetValue(x, out var elevationX))
                     {
-                        wX = elevationX;
+                        var longitude = projection.EqualArea
+                            ? SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(x, xLength, scale, projection)
+                            : SurfaceMap.GetLongitudeOfEquirectangularProjection(x, xLength, stretch, projection);
+
+                        elevationX = projection.EqualArea
+                            ? SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, elevationMap.Width, elevationScale, projection)
+                            : SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, elevationMap.Width, elevationScale, projection);
+                        int wX;
+                        if (winterTemperatureMap.Width == elevationMap.Width)
+                        {
+                            wX = elevationX;
+                        }
+                        else if (projection.EqualArea)
+                        {
+                            wX = SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, winterTemperatureMap.Width, winterScale, projection);
+                        }
+                        else
+                        {
+                            wX = SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, winterTemperatureMap.Width, winterScale, projection);
+                        }
+
+                        int sX;
+                        if (summerTemperatureMap.Width == elevationMap.Width)
+                        {
+                            sX = elevationX;
+                        }
+                        else if (projection.EqualArea)
+                        {
+                            sX = SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, summerTemperatureMap.Width, summerScale, projection);
+                        }
+                        else
+                        {
+                            sX = SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, summerTemperatureMap.Width, summerScale, projection);
+                        }
+
+                        int pX;
+                        if (precipitationMap.Width == elevationMap.Width)
+                        {
+                            pX = elevationX;
+                        }
+                        else if (projection.EqualArea)
+                        {
+                            pX = SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, precipitationMap.Width, precipitationScale, projection);
+                        }
+                        else
+                        {
+                            pX = SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, precipitationMap.Width, precipitationScale, projection);
+                        }
+
+                        xToEX.Add(x, elevationX);
+                        xToWX.Add(x, wX);
+                        xToSX.Add(x, sX);
+                        xToPX.Add(x, pX);
+                    }
+                    normalizedElevations[y][x] = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel;
+                    totalElevation += normalizedElevations[y][x];
+                }
+            }
+        });
+
+        var minTemperature = 5000.0f;
+        var maxTemperature = 0.0f;
+        var totalTemperature = 0.0f;
+        var totalPrecipiation = 0.0;
+        winterTemperatureMap.ProcessPixelRows(
+            summerTemperatureMap,
+            precipitationMap,
+            (winterMap, summerMap, precipMap) =>
+            {
+                for (var y = 0; y < resolution; y++)
+                {
+                    var latitude = projection.EqualArea
+                        ? SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(y, resolution, scale, projection)
+                        : SurfaceMap.GetLatitudeOfEquirectangularProjection(y, resolution, scale, projection);
+
+                    int winterY;
+                    if (winterTemperatureMap.Height == elevationMap.Height)
+                    {
+                        winterY = elevationYs[y];
                     }
                     else if (projection.EqualArea)
                     {
-                        wX = SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, winterTemperatureMap.Width, winterScale, projection);
+                        winterY = SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, winterTemperatureMap.Height, winterScale, projection);
                     }
                     else
                     {
-                        wX = SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, winterTemperatureMap.Width, winterScale, projection);
+                        winterY = SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, winterTemperatureMap.Height, winterScale, projection);
                     }
 
-                    int sX;
-                    if (summerTemperatureMap.Width == elevationMap.Width)
+                    var winterSpan = winterMap.GetRowSpan(winterY);
+
+                    int summerY;
+                    if (summerTemperatureMap.Height == elevationMap.Height)
                     {
-                        sX = elevationX;
+                        summerY = elevationYs[y];
                     }
                     else if (projection.EqualArea)
                     {
-                        sX = SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, summerTemperatureMap.Width, summerScale, projection);
+                        summerY = SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, summerTemperatureMap.Height, summerScale, projection);
                     }
                     else
                     {
-                        sX = SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, summerTemperatureMap.Width, summerScale, projection);
+                        summerY = SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, summerTemperatureMap.Height, summerScale, projection);
                     }
 
-                    int pX;
-                    if (precipitationMap.Width == elevationMap.Width)
+                    var summerSpan = summerMap.GetRowSpan(summerY);
+
+                    int precipitationY;
+                    if (precipitationMap.Height == elevationMap.Height)
                     {
-                        pX = elevationX;
+                        precipitationY = elevationYs[y];
                     }
                     else if (projection.EqualArea)
                     {
-                        pX = SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, precipitationMap.Width, precipitationScale, projection);
+                        precipitationY = SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, precipitationMap.Height, precipitationScale, projection);
                     }
                     else
                     {
-                        pX = SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, precipitationMap.Width, precipitationScale, projection);
+                        precipitationY = SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, precipitationMap.Height, precipitationScale, projection);
                     }
 
-                    xToEX.Add(x, elevationX);
-                    xToWX.Add(x, wX);
-                    xToSX.Add(x, sX);
-                    xToPX.Add(x, pX);
-                }
-                var winterX = xToWX[x];
-                var summerX = xToSX[x];
-                var precipitationX = xToPX[x];
+                    var precipitationSpan = precipMap.GetRowSpan(precipitationY);
 
-                var normalizedElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel;
-                totalElevation += normalizedElevation;
-
-                var winterTemperature = (float)(winterSpan[winterX].GetValueFromPixel_Pos() * SurfaceMapImage.TemperatureScaleFactor);
-                var summerTemperature = (float)(summerSpan[summerX].GetValueFromPixel_Pos() * SurfaceMapImage.TemperatureScaleFactor);
-                minTemperature = Math.Min(minTemperature, Math.Min(winterTemperature, summerTemperature));
-                maxTemperature = Math.Max(maxTemperature, Math.Max(winterTemperature, summerTemperature));
-                totalTemperature += (minTemperature + maxTemperature) / 2;
-
-                var precipValue = precipitationSpan[precipitationX].GetValueFromPixel_Pos();
-                var precipitation = precipValue * planet.Atmosphere.MaxPrecipitation;
-                totalPrecipiation += precipValue;
-
-                ClimateMap[x][y] = Universe.Climate.Climate.GetClimateType(new FloatRange(
-                    Math.Min(winterTemperature, summerTemperature),
-                    Math.Max(winterTemperature, summerTemperature)));
-                humidityMap[x][y] = Universe.Climate.Climate.GetHumidityType(precipitation);
-                BiomeMap[x][y] = Universe.Climate.Climate.GetBiomeType(ClimateMap[x][y], humidityMap[x][y], normalizedElevation);
-
-                if (normalizedElevation > 0
-                    || (summerTemperature >= Substances.All.Seawater.MeltingPoint
-                    && winterTemperature >= Substances.All.Seawater.MeltingPoint))
-                {
-                    continue;
-                }
-
-                if (summerTemperature < Substances.All.Seawater.MeltingPoint
-                    && winterTemperature < Substances.All.Seawater.MeltingPoint)
-                {
-                    SeaIceRangeMap[x][y] = FloatRange.ZeroToOne;
-                    continue;
-                }
-
-                var freezeProportion = ((summerTemperature >= winterTemperature
-                    ? winterTemperature.InverseLerp(summerTemperature, (float)(Substances.All.Seawater.MeltingPoint ?? 0))
-                    : summerTemperature.InverseLerp(winterTemperature, (float)(Substances.All.Seawater.MeltingPoint ?? 0))) * 0.8f) - 0.1f;
-                if (freezeProportion <= 0
-                    || float.IsNaN(freezeProportion))
-                {
-                    continue;
-                }
-
-                var freezeStart = 1 - (freezeProportion / 4);
-                var iceMeltFinish = freezeProportion * 3 / 4;
-                if (latitude < 0)
-                {
-                    freezeStart += 0.5f;
-                    if (freezeStart > 1)
+                    for (var x = 0; x < xLength; x++)
                     {
-                        freezeStart--;
-                    }
+                        var winterX = xToWX[x];
+                        var summerX = xToSX[x];
+                        var precipitationX = xToPX[x];
 
-                    iceMeltFinish += 0.5f;
-                    if (iceMeltFinish > 1)
-                    {
-                        iceMeltFinish--;
+                        var winterTemperature = (float)(winterSpan[winterX].GetValueFromPixel_Pos() * SurfaceMapImage.TemperatureScaleFactor);
+                        var summerTemperature = (float)(summerSpan[summerX].GetValueFromPixel_Pos() * SurfaceMapImage.TemperatureScaleFactor);
+                        minTemperature = Math.Min(minTemperature, Math.Min(winterTemperature, summerTemperature));
+                        maxTemperature = Math.Max(maxTemperature, Math.Max(winterTemperature, summerTemperature));
+                        totalTemperature += (minTemperature + maxTemperature) / 2;
+
+                        var precipValue = precipitationSpan[precipitationX].GetValueFromPixel_Pos();
+                        var precipitation = precipValue * planet.Atmosphere.MaxPrecipitation;
+                        totalPrecipiation += precipValue;
+
+                        climateMap[x][y] = Universe.Climate.Climate.GetClimateType(new FloatRange(
+                            Math.Min(winterTemperature, summerTemperature),
+                            Math.Max(winterTemperature, summerTemperature)));
+                        humidityMap[x][y] = Universe.Climate.Climate.GetHumidityType(precipitation);
+                        biomeMap[x][y] = Universe.Climate.Climate.GetBiomeType(climateMap[x][y], humidityMap[x][y], normalizedElevations[y][x]);
+
+                        if (normalizedElevations[y][x] > 0
+                            || (summerTemperature >= Substances.All.Seawater.MeltingPoint
+                            && winterTemperature >= Substances.All.Seawater.MeltingPoint))
+                        {
+                            continue;
+                        }
+
+                        if (summerTemperature < Substances.All.Seawater.MeltingPoint
+                            && winterTemperature < Substances.All.Seawater.MeltingPoint)
+                        {
+                            seaIceRangeMap[x][y] = FloatRange.ZeroToOne;
+                            continue;
+                        }
+
+                        var freezeProportion = ((summerTemperature >= winterTemperature
+                            ? winterTemperature.InverseLerp(summerTemperature, (float)(Substances.All.Seawater.MeltingPoint ?? 0))
+                            : summerTemperature.InverseLerp(winterTemperature, (float)(Substances.All.Seawater.MeltingPoint ?? 0))) * 0.8f) - 0.1f;
+                        if (freezeProportion <= 0
+                            || float.IsNaN(freezeProportion))
+                        {
+                            continue;
+                        }
+
+                        var freezeStart = 1 - (freezeProportion / 4);
+                        var iceMeltFinish = freezeProportion * 3 / 4;
+                        if (latitude < 0)
+                        {
+                            freezeStart += 0.5f;
+                            if (freezeStart > 1)
+                            {
+                                freezeStart--;
+                            }
+
+                            iceMeltFinish += 0.5f;
+                            if (iceMeltFinish > 1)
+                            {
+                                iceMeltFinish--;
+                            }
+                        }
+                        seaIceRangeMap[x][y] = new FloatRange(freezeStart, iceMeltFinish);
                     }
                 }
-                SeaIceRangeMap[x][y] = new FloatRange(freezeStart, iceMeltFinish);
-            }
-        }
+            });
 
-        Climate = Universe.Climate.Climate.GetClimateType(new FloatRange(minTemperature, totalTemperature / (XLength * YLength), maxTemperature));
-        var humidity = Universe.Climate.Climate.GetHumidityType(totalPrecipiation / (XLength * YLength) * planet.Atmosphere.MaxPrecipitation);
-        Biome = Universe.Climate.Climate.GetBiomeType(Climate, humidity, totalElevation / (XLength * YLength) * planet.MaxElevation);
+        BiomeMap = biomeMap;
+        ClimateMap = climateMap;
+        SeaIceRangeMap = seaIceRangeMap;
+        Climate = Universe.Climate.Climate.GetClimateType(new FloatRange(minTemperature, totalTemperature / (xLength * resolution), maxTemperature));
+        var humidity = Universe.Climate.Climate.GetHumidityType(totalPrecipiation / (xLength * resolution) * planet.Atmosphere.MaxPrecipitation);
+        Biome = Universe.Climate.Climate.GetBiomeType(Climate, humidity, totalElevation / (xLength * resolution) * planet.MaxElevation);
     }
 
     private WeatherMaps(SerializationInfo info, StreamingContext context) : this(

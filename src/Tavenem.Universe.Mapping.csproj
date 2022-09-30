@@ -1,10 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net7.0</TargetFramework>
+    <LangVersion>preview</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <EnablePreviewFeatures>true</EnablePreviewFeatures>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
@@ -17,7 +17,8 @@
     <Version>1.0.0</Version>
     <Authors>Wil Stead</Authors>
     <Description>Planetary mapping for Tavenem.Universe.</Description>
-    <Copyright>Copyright © 2019-2021 Wil Stead</Copyright>
+    <Copyright>Copyright © Wil Stead</Copyright>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/Tavenem/Universe.Mapping</PackageProjectUrl>
     <PackageIcon>tavenem_128.png</PackageIcon>
@@ -28,6 +29,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
     <None Include="tavenem_128.png" Pack="true" PackagePath="\" />
   </ItemGroup>
 
@@ -36,9 +38,9 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="SixLabors.ImageSharp" Version="1.0.4" />
-    <PackageReference Include="Tavenem.Extensions" Version="2.0.0" />
-    <PackageReference Include="Tavenem.Universe" Version="0.4.3-preview" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="2.1.3" />
+    <PackageReference Include="Tavenem.Extensions" Version="2.1.0-preview.1" />
+    <PackageReference Include="Tavenem.Universe" Version="0.4.4-preview" />
   </ItemGroup>
 
 </Project>

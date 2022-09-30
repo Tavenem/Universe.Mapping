@@ -107,32 +107,38 @@ public static class SurfaceMapImage
 
         if (images.Length == 2)
         {
-            for (var y = 0; y < yResolution; y++)
+            images[0].ProcessPixelRows(images[1], combined, (source1, source2, target) =>
             {
-                var img1Span = images[0].GetPixelRowSpan(y);
-                var img2Span = images[1].GetPixelRowSpan(y);
-                var combinedSpan = combined.GetPixelRowSpan(y);
-                for (var x = 0; x < xResolution; x++)
+                for (var y = 0; y < yResolution; y++)
                 {
-                    combinedSpan[x] = img1Span[x].Average(img2Span[x]);
+                    var img1Span = source1.GetRowSpan(y);
+                    var img2Span = source2.GetRowSpan(y);
+                    var combinedSpan = target.GetRowSpan(y);
+                    for (var x = 0; x < xResolution; x++)
+                    {
+                        combinedSpan[x] = img1Span[x].Average(img2Span[x]);
+                    }
                 }
-            }
+            });
             return combined;
         }
 
-        for (var y = 0; y < yResolution; y++)
+        combined.ProcessPixelRows(accessor =>
         {
-            var combinedSpan = combined.GetPixelRowSpan(y);
-            for (var x = 0; x < xResolution; x++)
+            for (var y = 0; y < yResolution; y++)
             {
-                var sum = 0.0;
-                for (var i = 0; i < images.Length; i++)
+                var combinedSpan = accessor.GetRowSpan(y);
+                for (var x = 0; x < xResolution; x++)
                 {
-                    sum += images[i][x, y].PackedValue;
+                    var sum = 0.0;
+                    for (var i = 0; i < images.Length; i++)
+                    {
+                        sum += images[i][x, y].PackedValue;
+                    }
+                    combinedSpan[x] = new L16((ushort)Math.Round(sum / images.Length).Clamp(0, ushort.MaxValue));
                 }
-                combinedSpan[x] = new L16((ushort)Math.Round(sum / images.Length).Clamp(0, ushort.MaxValue));
             }
-        }
+        });
 
         return combined;
     }
@@ -215,15 +221,18 @@ public static class SurfaceMapImage
         var yLength = elevationMap.Height;
         var destination = new Image<Rgba32>(xLength, yLength);
 
-        for (var y = 0; y < yLength; y++)
+        elevationMap.ProcessPixelRows(destination, (source, target) =>
         {
-            var sourceRowSpan = elevationMap.GetPixelRowSpan(y);
-            var destinationRowSpan = destination.GetPixelRowSpan(y);
-            for (var x = 0; x < xLength; x++)
+            for (var y = 0; y < yLength; y++)
             {
-                destinationRowSpan[x] = converter(sourceRowSpan[x]);
+                var sourceRowSpan = source.GetRowSpan(y);
+                var destinationRowSpan = target.GetRowSpan(y);
+                for (var x = 0; x < xLength; x++)
+                {
+                    destinationRowSpan[x] = converter(sourceRowSpan[x]);
+                }
             }
-        }
+        });
         return destination;
     }
 
@@ -255,16 +264,19 @@ public static class SurfaceMapImage
         var yLength = elevationMap.Height;
         var destination = new Image<Rgba32>(xLength, yLength);
 
-        for (var y = 0; y < yLength; y++)
+        elevationMap.ProcessPixelRows(destination, (source, target) =>
         {
-            var sourceRowSpan = elevationMap.GetPixelRowSpan(y);
-            var destinationRowSpan = destination.GetPixelRowSpan(y);
-            for (var x = 0; x < xLength; x++)
+            for (var y = 0; y < yLength; y++)
             {
-                destinationRowSpan[x] = converter(sourceRowSpan[x])
-                    .ApplyHillShading(elevationMap, x, y, hillShading, sourceRowSpan[x].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel > 0);
+                var sourceRowSpan = source.GetRowSpan(y);
+                var destinationRowSpan = target.GetRowSpan(y);
+                for (var x = 0; x < xLength; x++)
+                {
+                    destinationRowSpan[x] = converter(sourceRowSpan[x])
+                        .ApplyHillShading(elevationMap, x, y, hillShading, sourceRowSpan[x].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel > 0);
+                }
             }
-        }
+        });
         return destination;
     }
 
@@ -311,25 +323,28 @@ public static class SurfaceMapImage
         var yLength = elevationMap.Height;
         var destination = new Image<Rgba32>(xLength, yLength);
 
-        for (var y = 0; y < yLength; y++)
+        elevationMap.ProcessPixelRows(destination, (source, target) =>
         {
-            var sourceRowSpan = elevationMap.GetPixelRowSpan(y);
-            var destinationRowSpan = destination.GetPixelRowSpan(y);
-            for (var x = 0; x < xLength; x++)
+            for (var y = 0; y < yLength; y++)
             {
-                var normalElevation = sourceRowSpan[x].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel;
-                if (normalElevation >= 0)
+                var sourceRowSpan = source.GetRowSpan(y);
+                var destinationRowSpan = target.GetRowSpan(y);
+                for (var x = 0; x < xLength; x++)
                 {
-                    destinationRowSpan[x] = landConverter(sourceRowSpan[x])
-                        .ApplyHillShading(elevationMap, x, y, hillShading, true);
-                }
-                else
-                {
-                    destinationRowSpan[x] = oceanConverter(sourceRowSpan[x])
-                        .ApplyHillShading(elevationMap, x, y, hillShading, false);
+                    var normalElevation = sourceRowSpan[x].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel;
+                    if (normalElevation >= 0)
+                    {
+                        destinationRowSpan[x] = landConverter(sourceRowSpan[x])
+                            .ApplyHillShading(elevationMap, x, y, hillShading, true);
+                    }
+                    else
+                    {
+                        destinationRowSpan[x] = oceanConverter(sourceRowSpan[x])
+                            .ApplyHillShading(elevationMap, x, y, hillShading, false);
+                    }
                 }
             }
-        }
+        });
         return destination;
     }
 
@@ -489,17 +504,18 @@ public static class SurfaceMapImage
     /// </returns>
     public static FloatRange GetRange(this Image<L16> image, bool canBeNegative = false)
     {
-        float min, max;
+        var min = 0f;
+        var max = 0f;
         var minV = ushort.MaxValue;
         var maxV = ushort.MinValue;
         var sum = 0.0f;
         var yLength = image.Height;
         var xLength = image.Width;
-        if (canBeNegative)
+        image.ProcessPixelRows(accessor =>
         {
             for (var y = 0; y < yLength; y++)
             {
-                var span = image.GetPixelRowSpan(y);
+                var span = accessor.GetRowSpan(y);
                 for (var x = 0; x < xLength; x++)
                 {
                     var value = span[x].PackedValue;
@@ -508,27 +524,19 @@ public static class SurfaceMapImage
                     sum += value;
                 }
             }
-            min = (2.0f * minV / ushort.MaxValue) - 1;
-            max = (2.0f * maxV / ushort.MaxValue) - 1;
-            sum = (2.0f * sum / ushort.MaxValue) - 1;
-        }
-        else
-        {
-            for (var y = 0; y < yLength; y++)
+            if (canBeNegative)
             {
-                var span = image.GetPixelRowSpan(y);
-                for (var x = 0; x < xLength; x++)
-                {
-                    var value = span[x].PackedValue;
-                    minV = Math.Min(minV, value);
-                    maxV = Math.Max(maxV, value);
-                    sum += value;
-                }
+                min = (2.0f * minV / ushort.MaxValue) - 1;
+                max = (2.0f * maxV / ushort.MaxValue) - 1;
+                sum = (2.0f * sum / ushort.MaxValue) - 1;
             }
-            min = (float)minV / ushort.MaxValue;
-            max = (float)maxV / ushort.MaxValue;
-            sum /= ushort.MaxValue;
-        }
+            else
+            {
+                min = (float)minV / ushort.MaxValue;
+                max = (float)maxV / ushort.MaxValue;
+                sum /= ushort.MaxValue;
+            }
+        });
         return new FloatRange(min, sum / (yLength * xLength), max);
     }
 
@@ -563,48 +571,51 @@ public static class SurfaceMapImage
         var scale = SurfaceMap.GetScale(yLength, options.Range, options.EqualArea);
         var tScale = SurfaceMap.GetScale(tempYLength, options.Range, options.EqualArea);
         var xToX = new Dictionary<int, int>();
-        for (var y = 0; y < yLength; y++)
+        snowImg.ProcessPixelRows(precipitationMap, temperatureMap, (snow, precip, temp) =>
         {
-            var snowSpan = snowImg.GetPixelRowSpan(y);
-            var precipSpan = precipitationMap.GetPixelRowSpan(y);
-            int tY;
-            if (match)
+            for (var y = 0; y < yLength; y++)
             {
-                tY = y;
-            }
-            else
-            {
-                var lat = options.EqualArea
-                    ? SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(y, yLength, scale, options)
-                    : SurfaceMap.GetLatitudeOfEquirectangularProjection(y, yLength, scale, options);
-                tY = options.EqualArea
-                    ? SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(lat, tempYLength, tScale, options)
-                    : SurfaceMap.GetEquirectangularYFromLatWithScale(lat, tempYLength, tScale, options);
-            }
-            var tSpan = temperatureMap.GetPixelRowSpan(tY);
-            for (var x = 0; x < xLength; x++)
-            {
-                int tX;
+                var snowSpan = snow.GetRowSpan(y);
+                var precipSpan = precip.GetRowSpan(y);
+                int tY;
                 if (match)
                 {
-                    tX = x;
+                    tY = y;
                 }
-                else if (!xToX.TryGetValue(x, out tX))
+                else
                 {
-                    var lon = options.EqualArea
-                        ? SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(x, xLength, scale, options)
-                        : SurfaceMap.GetLongitudeOfEquirectangularProjection(x, xLength, scale, options);
-                    tX = options.EqualArea
-                        ? SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(lon, tempXLength, tScale, options)
-                        : SurfaceMap.GetEquirectangularXFromLonWithScale(lon, tempXLength, tScale, options);
-                    xToX.Add(x, tX);
+                    var lat = options.EqualArea
+                        ? SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(y, yLength, scale, options)
+                        : SurfaceMap.GetLatitudeOfEquirectangularProjection(y, yLength, scale, options);
+                    tY = options.EqualArea
+                        ? SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(lat, tempYLength, tScale, options)
+                        : SurfaceMap.GetEquirectangularYFromLatWithScale(lat, tempYLength, tScale, options);
                 }
-                if (tSpan[tX].PackedValue < 17901) // 273.15K / 1000 * ushort.MaxValue
+                var tSpan = temp.GetRowSpan(tY);
+                for (var x = 0; x < xLength; x++)
                 {
-                    snowSpan[x] = new L16((ushort)Math.Min(ushort.MaxValue, precipSpan[x].PackedValue * Atmosphere.SnowToRainRatio));
+                    int tX;
+                    if (match)
+                    {
+                        tX = x;
+                    }
+                    else if (!xToX.TryGetValue(x, out tX))
+                    {
+                        var lon = options.EqualArea
+                            ? SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(x, xLength, scale, options)
+                            : SurfaceMap.GetLongitudeOfEquirectangularProjection(x, xLength, scale, options);
+                        tX = options.EqualArea
+                            ? SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(lon, tempXLength, tScale, options)
+                            : SurfaceMap.GetEquirectangularXFromLonWithScale(lon, tempXLength, tScale, options);
+                        xToX.Add(x, tX);
+                    }
+                    if (tSpan[tX].PackedValue < 17901) // 273.15K / 1000 * ushort.MaxValue
+                    {
+                        snowSpan[x] = new L16((ushort)Math.Min(ushort.MaxValue, precipSpan[x].PackedValue * Atmosphere.SnowToRainRatio));
+                    }
                 }
             }
-        }
+        });
         return snowImg;
     }
 
@@ -1021,15 +1032,18 @@ public static class SurfaceMapImage
         var xLength = surfaceMap.Width;
         var destination = new Image<Rgba32>(xLength, yLength);
 
-        for (var y = 0; y < yLength; y++)
+        surfaceMap.ProcessPixelRows(destination, (source, target) =>
         {
-            var sourceRowSpan = surfaceMap.GetPixelRowSpan(y);
-            var destinationRowSpan = destination.GetPixelRowSpan(y);
-            for (var x = 0; x < xLength; x++)
+            for (var y = 0; y < yLength; y++)
             {
-                destinationRowSpan[x] = converter(sourceRowSpan[x]);
+                var sourceRowSpan = source.GetRowSpan(y);
+                var destinationRowSpan = target.GetRowSpan(y);
+                for (var x = 0; x < xLength; x++)
+                {
+                    destinationRowSpan[x] = converter(sourceRowSpan[x]);
+                }
             }
-        }
+        });
         return destination;
     }
 
@@ -1088,54 +1102,57 @@ public static class SurfaceMapImage
         var stretch = scale / projection.ScaleFactor;
         var elevationScale = matchingSizes ? 0 : SurfaceMap.GetScale(elevationYLength, elevationProjection.Range, elevationProjection.EqualArea);
 
-        for (var y = 0; y < yLength; y++)
+        surfaceMap.ProcessPixelRows(destination, (source, target) =>
         {
-            var sourceRowSpan = surfaceMap.GetPixelRowSpan(y);
-            var destinationRowSpan = destination.GetPixelRowSpan(y);
-            int elevationY;
-            if (matchingSizes || hillShading is null)
+            for (var y = 0; y < yLength; y++)
             {
-                elevationY = y;
-            }
-            else if (projection.EqualArea)
-            {
-                var latitude = SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(y, yLength, scale, projection);
-                elevationY = SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
-            }
-            else
-            {
-                var latitude = SurfaceMap.GetLatitudeOfEquirectangularProjection(y, yLength, scale, projection);
-                elevationY = SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
-            }
-            for (var x = 0; x < xLength; x++)
-            {
-                if (hillShading is null)
+                var sourceRowSpan = source.GetRowSpan(y);
+                var destinationRowSpan = target.GetRowSpan(y);
+                int elevationY;
+                if (matchingSizes || hillShading is null)
                 {
-                    destinationRowSpan[x] = converter(sourceRowSpan[x]);
+                    elevationY = y;
+                }
+                else if (projection.EqualArea)
+                {
+                    var latitude = SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(y, yLength, scale, projection);
+                    elevationY = SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
                 }
                 else
                 {
-                    int elevationX;
-                    if (matchingSizes)
+                    var latitude = SurfaceMap.GetLatitudeOfEquirectangularProjection(y, yLength, scale, projection);
+                    elevationY = SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
+                }
+                for (var x = 0; x < xLength; x++)
+                {
+                    if (hillShading is null)
                     {
-                        elevationX = x;
-                    }
-                    else if (projection.EqualArea)
-                    {
-                        var longitude = SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(x, xLength, scale, projection);
-                        elevationX = SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                        destinationRowSpan[x] = converter(sourceRowSpan[x]);
                     }
                     else
                     {
-                        var longitude = SurfaceMap.GetLongitudeOfEquirectangularProjection(x, xLength, stretch, projection);
-                        elevationX = SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
-                    }
+                        int elevationX;
+                        if (matchingSizes)
+                        {
+                            elevationX = x;
+                        }
+                        else if (projection.EqualArea)
+                        {
+                            var longitude = SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(x, xLength, scale, projection);
+                            elevationX = SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                        }
+                        else
+                        {
+                            var longitude = SurfaceMap.GetLongitudeOfEquirectangularProjection(x, xLength, stretch, projection);
+                            elevationX = SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                        }
 
-                    destinationRowSpan[x] = converter(sourceRowSpan[x])
-                        .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
+                        destinationRowSpan[x] = converter(sourceRowSpan[x])
+                            .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
+                    }
                 }
             }
-        }
+        });
         return destination;
     }
 
@@ -1211,78 +1228,81 @@ public static class SurfaceMapImage
         var stretch = scale / projection.ScaleFactor;
         var elevationScale = matchingSizes ? 0 : SurfaceMap.GetScale(elevationYLength, elevationProjection.Range, elevationProjection.EqualArea);
 
-        for (var y = 0; y < yLength; y++)
+        surfaceMap.ProcessPixelRows(elevationMap, destination, (surface, elevation, target) =>
         {
-            var sourceRowSpan = surfaceMap.GetPixelRowSpan(y);
-            var destinationRowSpan = destination.GetPixelRowSpan(y);
-            int elevationY;
-            if (matchingSizes)
+            for (var y = 0; y < yLength; y++)
             {
-                elevationY = y;
-            }
-            else if (projection.EqualArea)
-            {
-                var latitude = SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(y, yLength, scale, projection);
-                elevationY = SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
-            }
-            else
-            {
-                var latitude = SurfaceMap.GetLatitudeOfEquirectangularProjection(y, yLength, scale, projection);
-                elevationY = SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
-            }
-            var elevationSpan = elevationMap.GetPixelRowSpan(elevationY);
-            for (var x = 0; x < xLength; x++)
-            {
-                int elevationX;
+                var sourceRowSpan = surface.GetRowSpan(y);
+                var destinationRowSpan = target.GetRowSpan(y);
+                int elevationY;
                 if (matchingSizes)
                 {
-                    elevationX = x;
+                    elevationY = y;
                 }
                 else if (projection.EqualArea)
                 {
-                    var longitude = SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(x, xLength, scale, projection);
-                    elevationX = SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    var latitude = SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(y, yLength, scale, projection);
+                    elevationY = SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
                 }
                 else
                 {
-                    var longitude = SurfaceMap.GetLongitudeOfEquirectangularProjection(x, xLength, stretch, projection);
-                    elevationX = SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    var latitude = SurfaceMap.GetLatitudeOfEquirectangularProjection(y, yLength, scale, projection);
+                    elevationY = SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
                 }
-                if (landConverter is null && oceanConverter is null)
+                var elevationSpan = elevation.GetRowSpan(elevationY);
+                for (var x = 0; x < xLength; x++)
                 {
-                    sourceRowSpan[x].ToRgba32(ref destinationRowSpan[x]);
-                    destinationRowSpan[x].ApplyHillShading(elevationMap, x, y, hillShading, true);
-                }
+                    int elevationX;
+                    if (matchingSizes)
+                    {
+                        elevationX = x;
+                    }
+                    else if (projection.EqualArea)
+                    {
+                        var longitude = SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(x, xLength, scale, projection);
+                        elevationX = SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    }
+                    else
+                    {
+                        var longitude = SurfaceMap.GetLongitudeOfEquirectangularProjection(x, xLength, stretch, projection);
+                        elevationX = SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    }
+                    if (landConverter is null && oceanConverter is null)
+                    {
+                        sourceRowSpan[x].ToRgba32(ref destinationRowSpan[x]);
+                        destinationRowSpan[x].ApplyHillShading(elevationMap, x, y, hillShading, true);
+                    }
 
-                var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel;
-                if (normalElevation >= 0)
-                {
-                    if (landConverter is null)
+                    var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel;
+                    if (normalElevation >= 0)
                     {
-                        sourceRowSpan[x].ToRgba32(ref destinationRowSpan[x]);
-                        destinationRowSpan[x].ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
+                        if (landConverter is null)
+                        {
+                            sourceRowSpan[x].ToRgba32(ref destinationRowSpan[x]);
+                            destinationRowSpan[x].ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
+                        }
+                        else
+                        {
+                            destinationRowSpan[x] = landConverter(sourceRowSpan[x])
+                                .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
+                        }
                     }
                     else
                     {
-                        destinationRowSpan[x] = landConverter(sourceRowSpan[x])
-                            .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
-                    }
-                }
-                else
-                {
-                    if (oceanConverter is null)
-                    {
-                        sourceRowSpan[x].ToRgba32(ref destinationRowSpan[x]);
-                        destinationRowSpan[x].ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
-                    }
-                    else
-                    {
-                        destinationRowSpan[x] = oceanConverter(sourceRowSpan[x])
-                            .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, false);
+                        if (oceanConverter is null)
+                        {
+                            sourceRowSpan[x].ToRgba32(ref destinationRowSpan[x]);
+                            destinationRowSpan[x].ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
+                        }
+                        else
+                        {
+                            destinationRowSpan[x] = oceanConverter(sourceRowSpan[x])
+                                .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, false);
+                        }
                     }
                 }
             }
-        }
+        });
         return destination;
     }
 
@@ -1360,78 +1380,81 @@ public static class SurfaceMapImage
         var stretch = scale / projection.ScaleFactor;
         var elevationScale = matchingSizes ? 0 : SurfaceMap.GetScale(elevationYLength, elevationProjection.Range, elevationProjection.EqualArea);
 
-        for (var y = 0; y < yLength; y++)
+        surfaceMap.ProcessPixelRows(elevationMap, destination, (surface, elevation, target) =>
         {
-            var sourceRowSpan = surfaceMap.GetPixelRowSpan(y);
-            var destinationRowSpan = destination.GetPixelRowSpan(y);
-            int elevationY;
-            if (matchingSizes)
+            for (var y = 0; y < yLength; y++)
             {
-                elevationY = y;
-            }
-            else if (projection.EqualArea)
-            {
-                var latitude = SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(y, yLength, scale, projection);
-                elevationY = SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
-            }
-            else
-            {
-                var latitude = SurfaceMap.GetLatitudeOfEquirectangularProjection(y, yLength, scale, projection);
-                elevationY = SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
-            }
-            var elevationSpan = elevationMap.GetPixelRowSpan(elevationY);
-            for (var x = 0; x < xLength; x++)
-            {
-                int elevationX;
+                var sourceRowSpan = surface.GetRowSpan(y);
+                var destinationRowSpan = target.GetRowSpan(y);
+                int elevationY;
                 if (matchingSizes)
                 {
-                    elevationX = x;
+                    elevationY = y;
                 }
                 else if (projection.EqualArea)
                 {
-                    var longitude = SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(x, xLength, scale, projection);
-                    elevationX = SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    var latitude = SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(y, yLength, scale, projection);
+                    elevationY = SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
                 }
                 else
                 {
-                    var longitude = SurfaceMap.GetLongitudeOfEquirectangularProjection(x, xLength, stretch, projection);
-                    elevationX = SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    var latitude = SurfaceMap.GetLatitudeOfEquirectangularProjection(y, yLength, scale, projection);
+                    elevationY = SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
                 }
-                if (landConverter is null && oceanConverter is null)
+                var elevationSpan = elevation.GetRowSpan(elevationY);
+                for (var x = 0; x < xLength; x++)
                 {
-                    sourceRowSpan[x].ToRgba32(ref destinationRowSpan[x]);
-                    destinationRowSpan[x].ApplyHillShading(elevationMap, x, y, hillShading, true);
-                }
+                    int elevationX;
+                    if (matchingSizes)
+                    {
+                        elevationX = x;
+                    }
+                    else if (projection.EqualArea)
+                    {
+                        var longitude = SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(x, xLength, scale, projection);
+                        elevationX = SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    }
+                    else
+                    {
+                        var longitude = SurfaceMap.GetLongitudeOfEquirectangularProjection(x, xLength, stretch, projection);
+                        elevationX = SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    }
+                    if (landConverter is null && oceanConverter is null)
+                    {
+                        sourceRowSpan[x].ToRgba32(ref destinationRowSpan[x]);
+                        destinationRowSpan[x].ApplyHillShading(elevationMap, x, y, hillShading, true);
+                    }
 
-                var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel;
-                if (normalElevation >= 0)
-                {
-                    if (landConverter is null)
+                    var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel;
+                    if (normalElevation >= 0)
                     {
-                        sourceRowSpan[x].ToRgba32(ref destinationRowSpan[x]);
-                        destinationRowSpan[x].ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
+                        if (landConverter is null)
+                        {
+                            sourceRowSpan[x].ToRgba32(ref destinationRowSpan[x]);
+                            destinationRowSpan[x].ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
+                        }
+                        else
+                        {
+                            destinationRowSpan[x] = landConverter(sourceRowSpan[x], normalElevation)
+                                .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
+                        }
                     }
                     else
                     {
-                        destinationRowSpan[x] = landConverter(sourceRowSpan[x], normalElevation)
-                            .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
-                    }
-                }
-                else
-                {
-                    if (oceanConverter is null)
-                    {
-                        sourceRowSpan[x].ToRgba32(ref destinationRowSpan[x]);
-                        destinationRowSpan[x].ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
-                    }
-                    else
-                    {
-                        destinationRowSpan[x] = oceanConverter(sourceRowSpan[x], normalElevation)
-                            .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, false);
+                        if (oceanConverter is null)
+                        {
+                            sourceRowSpan[x].ToRgba32(ref destinationRowSpan[x]);
+                            destinationRowSpan[x].ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
+                        }
+                        else
+                        {
+                            destinationRowSpan[x] = oceanConverter(sourceRowSpan[x], normalElevation)
+                                .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, false);
+                        }
                     }
                 }
             }
-        }
+        });
         return destination;
     }
 
@@ -1509,78 +1532,81 @@ public static class SurfaceMapImage
         var stretch = scale / projection.ScaleFactor;
         var elevationScale = matchingSizes ? 0 : SurfaceMap.GetScale(elevationYLength, elevationProjection.Range, elevationProjection.EqualArea);
 
-        for (var y = 0; y < yLength; y++)
+        surfaceMap.ProcessPixelRows(elevationMap, destination, (surface, elevation, target) =>
         {
-            var sourceRowSpan = surfaceMap.GetPixelRowSpan(y);
-            var destinationRowSpan = destination.GetPixelRowSpan(y);
-            int elevationY;
-            if (matchingSizes)
+            for (var y = 0; y < yLength; y++)
             {
-                elevationY = y;
-            }
-            else if (projection.EqualArea)
-            {
-                var latitude = SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(y, yLength, scale, projection);
-                elevationY = SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
-            }
-            else
-            {
-                var latitude = SurfaceMap.GetLatitudeOfEquirectangularProjection(y, yLength, scale, projection);
-                elevationY = SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
-            }
-            var elevationSpan = elevationMap.GetPixelRowSpan(elevationY);
-            for (var x = 0; x < xLength; x++)
-            {
-                int elevationX;
+                var sourceRowSpan = surface.GetRowSpan(y);
+                var destinationRowSpan = target.GetRowSpan(y);
+                int elevationY;
                 if (matchingSizes)
                 {
-                    elevationX = x;
+                    elevationY = y;
                 }
                 else if (projection.EqualArea)
                 {
-                    var longitude = SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(x, xLength, scale, projection);
-                    elevationX = SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    var latitude = SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(y, yLength, scale, projection);
+                    elevationY = SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
                 }
                 else
                 {
-                    var longitude = SurfaceMap.GetLongitudeOfEquirectangularProjection(x, xLength, stretch, projection);
-                    elevationX = SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    var latitude = SurfaceMap.GetLatitudeOfEquirectangularProjection(y, yLength, scale, projection);
+                    elevationY = SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
                 }
-                if (landConverter is null && oceanConverter is null)
+                var elevationSpan = elevation.GetRowSpan(elevationY);
+                for (var x = 0; x < xLength; x++)
                 {
-                    sourceRowSpan[x].ToRgba32(ref destinationRowSpan[x]);
-                    destinationRowSpan[x].ApplyHillShading(elevationMap, x, y, hillShading, true);
-                }
+                    int elevationX;
+                    if (matchingSizes)
+                    {
+                        elevationX = x;
+                    }
+                    else if (projection.EqualArea)
+                    {
+                        var longitude = SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(x, xLength, scale, projection);
+                        elevationX = SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    }
+                    else
+                    {
+                        var longitude = SurfaceMap.GetLongitudeOfEquirectangularProjection(x, xLength, stretch, projection);
+                        elevationX = SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    }
+                    if (landConverter is null && oceanConverter is null)
+                    {
+                        sourceRowSpan[x].ToRgba32(ref destinationRowSpan[x]);
+                        destinationRowSpan[x].ApplyHillShading(elevationMap, x, y, hillShading, true);
+                    }
 
-                var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel;
-                if (normalElevation >= 0)
-                {
-                    if (landConverter is null)
+                    var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel;
+                    if (normalElevation >= 0)
                     {
-                        sourceRowSpan[x].ToRgba32(ref destinationRowSpan[x]);
-                        destinationRowSpan[x].ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
+                        if (landConverter is null)
+                        {
+                            sourceRowSpan[x].ToRgba32(ref destinationRowSpan[x]);
+                            destinationRowSpan[x].ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
+                        }
+                        else
+                        {
+                            destinationRowSpan[x] = landConverter(sourceRowSpan[x], normalElevation, x, y)
+                                .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
+                        }
                     }
                     else
                     {
-                        destinationRowSpan[x] = landConverter(sourceRowSpan[x], normalElevation, x, y)
-                            .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
-                    }
-                }
-                else
-                {
-                    if (oceanConverter is null)
-                    {
-                        sourceRowSpan[x].ToRgba32(ref destinationRowSpan[x]);
-                        destinationRowSpan[x].ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
-                    }
-                    else
-                    {
-                        destinationRowSpan[x] = oceanConverter(sourceRowSpan[x], normalElevation, x, y)
-                            .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, false);
+                        if (oceanConverter is null)
+                        {
+                            sourceRowSpan[x].ToRgba32(ref destinationRowSpan[x]);
+                            destinationRowSpan[x].ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
+                        }
+                        else
+                        {
+                            destinationRowSpan[x] = oceanConverter(sourceRowSpan[x], normalElevation, x, y)
+                                .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, false);
+                        }
                     }
                 }
             }
-        }
+        });
         return destination;
     }
 
@@ -1658,81 +1684,84 @@ public static class SurfaceMapImage
         var stretch = scale / projection.ScaleFactor;
         var elevationScale = matchingSizes ? 0 : SurfaceMap.GetScale(elevationYLength, elevationProjection.Range, elevationProjection.EqualArea);
 
-        for (var y = 0; y < yLength; y++)
+        surfaceMap.ProcessPixelRows(elevationMap, destination, (surface, elevation, target) =>
         {
-            var sourceRowSpan = surfaceMap.GetPixelRowSpan(y);
-            var destinationRowSpan = destination.GetPixelRowSpan(y);
-            int elevationY;
-            var latitude = projection.EqualArea
-                ? SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(y, yLength, scale, projection)
-                : SurfaceMap.GetLatitudeOfEquirectangularProjection(y, yLength, scale, projection);
-            if (matchingSizes)
+            for (var y = 0; y < yLength; y++)
             {
-                elevationY = y;
-            }
-            else if (projection.EqualArea)
-            {
-                elevationY = SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
-            }
-            else
-            {
-                elevationY = SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
-            }
-            var elevationSpan = elevationMap.GetPixelRowSpan(elevationY);
-            for (var x = 0; x < xLength; x++)
-            {
-                int elevationX;
-                var longitude = projection.EqualArea
-                    ? SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(x, xLength, scale, projection)
-                    : SurfaceMap.GetLongitudeOfEquirectangularProjection(x, xLength, stretch, projection);
+                var sourceRowSpan = surface.GetRowSpan(y);
+                var destinationRowSpan = target.GetRowSpan(y);
+                int elevationY;
+                var latitude = projection.EqualArea
+                    ? SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(y, yLength, scale, projection)
+                    : SurfaceMap.GetLatitudeOfEquirectangularProjection(y, yLength, scale, projection);
                 if (matchingSizes)
                 {
-                    elevationX = x;
+                    elevationY = y;
                 }
                 else if (projection.EqualArea)
                 {
-                    elevationX = SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    elevationY = SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
                 }
                 else
                 {
-                    elevationX = SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    elevationY = SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
                 }
-
-                if (landConverter is null && oceanConverter is null)
+                var elevationSpan = elevation.GetRowSpan(elevationY);
+                for (var x = 0; x < xLength; x++)
                 {
-                    sourceRowSpan[x].ToRgba32(ref destinationRowSpan[x]);
-                    destinationRowSpan[x].ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
-                }
+                    int elevationX;
+                    var longitude = projection.EqualArea
+                        ? SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(x, xLength, scale, projection)
+                        : SurfaceMap.GetLongitudeOfEquirectangularProjection(x, xLength, stretch, projection);
+                    if (matchingSizes)
+                    {
+                        elevationX = x;
+                    }
+                    else if (projection.EqualArea)
+                    {
+                        elevationX = SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    }
+                    else
+                    {
+                        elevationX = SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    }
 
-                var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel;
-                if (normalElevation >= 0)
-                {
-                    if (landConverter is null)
+                    if (landConverter is null && oceanConverter is null)
                     {
                         sourceRowSpan[x].ToRgba32(ref destinationRowSpan[x]);
                         destinationRowSpan[x].ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
                     }
+
+                    var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel;
+                    if (normalElevation >= 0)
+                    {
+                        if (landConverter is null)
+                        {
+                            sourceRowSpan[x].ToRgba32(ref destinationRowSpan[x]);
+                            destinationRowSpan[x].ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
+                        }
+                        else
+                        {
+                            destinationRowSpan[x] = landConverter(sourceRowSpan[x], normalElevation, latitude, longitude)
+                                .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
+                        }
+                    }
                     else
                     {
-                        destinationRowSpan[x] = landConverter(sourceRowSpan[x], normalElevation, latitude, longitude)
-                            .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
-                    }
-                }
-                else
-                {
-                    if (oceanConverter is null)
-                    {
-                        sourceRowSpan[x].ToRgba32(ref destinationRowSpan[x]);
-                        destinationRowSpan[x].ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
-                    }
-                    else
-                    {
-                        destinationRowSpan[x] = oceanConverter(sourceRowSpan[x], normalElevation, latitude, longitude)
-                            .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, false);
+                        if (oceanConverter is null)
+                        {
+                            sourceRowSpan[x].ToRgba32(ref destinationRowSpan[x]);
+                            destinationRowSpan[x].ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
+                        }
+                        else
+                        {
+                            destinationRowSpan[x] = oceanConverter(sourceRowSpan[x], normalElevation, latitude, longitude)
+                                .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, false);
+                        }
                     }
                 }
             }
-        }
+        });
         return destination;
     }
 
@@ -1758,21 +1787,24 @@ public static class SurfaceMapImage
         var yLength = xLength == 0 ? 0 : surfaceMap[0].Length;
         var image = new Image<Rgba32>(xLength, yLength);
 
-        for (var y = 0; y < yLength; y++)
+        image.ProcessPixelRows(accessor =>
         {
-            var rowSpan = image.GetPixelRowSpan(y);
-            for (var x = 0; x < xLength; x++)
+            for (var y = 0; y < yLength; y++)
             {
-                if (converter is null)
+                var rowSpan = accessor.GetRowSpan(y);
+                for (var x = 0; x < xLength; x++)
                 {
-                    new L16(DoubleToLuminance(surfaceMap[x][y].Average)).ToRgba32(ref rowSpan[x]);
-                }
-                else
-                {
-                    rowSpan[x] = converter(surfaceMap[x][y].Average);
+                    if (converter is null)
+                    {
+                        new L16(DoubleToLuminance(surfaceMap[x][y].Average)).ToRgba32(ref rowSpan[x]);
+                    }
+                    else
+                    {
+                        rowSpan[x] = converter(surfaceMap[x][y].Average);
+                    }
                 }
             }
-        }
+        });
         return image;
     }
 
@@ -1798,14 +1830,17 @@ public static class SurfaceMapImage
         var yLength = xLength == 0 ? 0 : surfaceMap[0].Length;
         var image = new Image<Rgba32>(xLength, yLength);
 
-        for (var y = 0; y < yLength; y++)
+        image.ProcessPixelRows(accessor =>
         {
-            var rowSpan = image.GetPixelRowSpan(y);
-            for (var x = 0; x < xLength; x++)
+            for (var y = 0; y < yLength; y++)
             {
-                rowSpan[x] = converter(surfaceMap[x][y].Average, x, y);
+                var rowSpan = accessor.GetRowSpan(y);
+                for (var x = 0; x < xLength; x++)
+                {
+                    rowSpan[x] = converter(surfaceMap[x][y].Average, x, y);
+                }
             }
-        }
+        });
         return image;
     }
 
@@ -1824,14 +1859,17 @@ public static class SurfaceMapImage
         var yLength = xLength == 0 ? 0 : surfaceMap[0].Length;
         var image = new Image<Rgba32>(xLength, yLength);
 
-        for (var y = 0; y < yLength; y++)
+        image.ProcessPixelRows(accessor =>
         {
-            var rowSpan = image.GetPixelRowSpan(y);
-            for (var x = 0; x < xLength; x++)
+            for (var y = 0; y < yLength; y++)
             {
-                rowSpan[x] = converter(surfaceMap[x][y]);
+                var rowSpan = accessor.GetRowSpan(y);
+                for (var x = 0; x < xLength; x++)
+                {
+                    rowSpan[x] = converter(surfaceMap[x][y]);
+                }
             }
-        }
+        });
         return image;
     }
 
@@ -1850,14 +1888,17 @@ public static class SurfaceMapImage
         var yLength = xLength == 0 ? 0 : surfaceMap[0].Length;
         var image = new Image<Rgba32>(xLength, yLength);
 
-        for (var y = 0; y < yLength; y++)
+        image.ProcessPixelRows(accessor =>
         {
-            var rowSpan = image.GetPixelRowSpan(y);
-            for (var x = 0; x < xLength; x++)
+            for (var y = 0; y < yLength; y++)
             {
-                rowSpan[x] = converter(surfaceMap[x][y], x, y);
+                var rowSpan = accessor.GetRowSpan(y);
+                for (var x = 0; x < xLength; x++)
+                {
+                    rowSpan[x] = converter(surfaceMap[x][y], x, y);
+                }
             }
-        }
+        });
         return image;
     }
 
@@ -1925,57 +1966,60 @@ public static class SurfaceMapImage
         var stretch = scale / projection.ScaleFactor;
         var elevationScale = matchingSizes ? 0 : SurfaceMap.GetScale(elevationYLength, elevationProjection.Range, elevationProjection.EqualArea);
 
-        for (var y = 0; y < yLength; y++)
+        elevationMap.ProcessPixelRows(destination, (source, target) =>
         {
-            var destinationRowSpan = destination.GetPixelRowSpan(y);
-            int elevationY;
-            if (matchingSizes)
+            for (var y = 0; y < yLength; y++)
             {
-                elevationY = y;
-            }
-            else if (projection.EqualArea)
-            {
-                var latitude = SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(y, yLength, scale, projection);
-                elevationY = SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
-            }
-            else
-            {
-                var latitude = SurfaceMap.GetLatitudeOfEquirectangularProjection(y, yLength, scale, projection);
-                elevationY = SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
-            }
-            var elevationSpan = elevationMap.GetPixelRowSpan(elevationY);
-
-            for (var x = 0; x < xLength; x++)
-            {
-                int elevationX;
+                var destinationRowSpan = target.GetRowSpan(y);
+                int elevationY;
                 if (matchingSizes)
                 {
-                    elevationX = x;
+                    elevationY = y;
                 }
                 else if (projection.EqualArea)
                 {
-                    var longitude = SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(x, xLength, scale, projection);
-                    elevationX = SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    var latitude = SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(y, yLength, scale, projection);
+                    elevationY = SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
                 }
                 else
                 {
-                    var longitude = SurfaceMap.GetLongitudeOfEquirectangularProjection(x, xLength, stretch, projection);
-                    elevationX = SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    var latitude = SurfaceMap.GetLatitudeOfEquirectangularProjection(y, yLength, scale, projection);
+                    elevationY = SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
                 }
+                var elevationSpan = source.GetRowSpan(elevationY);
 
-                var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel;
-                if (normalElevation >= 0)
+                for (var x = 0; x < xLength; x++)
                 {
-                    destinationRowSpan[x] = landConverter(surfaceMap[x][y], normalElevation)
-                        .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
-                }
-                else
-                {
-                    destinationRowSpan[x] = oceanConverter(surfaceMap[x][y], normalElevation)
-                        .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, false);
+                    int elevationX;
+                    if (matchingSizes)
+                    {
+                        elevationX = x;
+                    }
+                    else if (projection.EqualArea)
+                    {
+                        var longitude = SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(x, xLength, scale, projection);
+                        elevationX = SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    }
+                    else
+                    {
+                        var longitude = SurfaceMap.GetLongitudeOfEquirectangularProjection(x, xLength, stretch, projection);
+                        elevationX = SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    }
+
+                    var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel;
+                    if (normalElevation >= 0)
+                    {
+                        destinationRowSpan[x] = landConverter(surfaceMap[x][y], normalElevation)
+                            .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
+                    }
+                    else
+                    {
+                        destinationRowSpan[x] = oceanConverter(surfaceMap[x][y], normalElevation)
+                            .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, false);
+                    }
                 }
             }
-        }
+        });
         return destination;
     }
 
@@ -2043,57 +2087,60 @@ public static class SurfaceMapImage
         var stretch = scale / projection.ScaleFactor;
         var elevationScale = matchingSizes ? 0 : SurfaceMap.GetScale(elevationYLength, elevationProjection.Range, elevationProjection.EqualArea);
 
-        for (var y = 0; y < yLength; y++)
+        elevationMap.ProcessPixelRows(destination, (source, target) =>
         {
-            var destinationRowSpan = destination.GetPixelRowSpan(y);
-            int elevationY;
-            if (matchingSizes)
+            for (var y = 0; y < yLength; y++)
             {
-                elevationY = y;
-            }
-            else if (projection.EqualArea)
-            {
-                var latitude = SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(y, yLength, scale, projection);
-                elevationY = SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
-            }
-            else
-            {
-                var latitude = SurfaceMap.GetLatitudeOfEquirectangularProjection(y, yLength, scale, projection);
-                elevationY = SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
-            }
-            var elevationSpan = elevationMap.GetPixelRowSpan(elevationY);
-
-            for (var x = 0; x < xLength; x++)
-            {
-                int elevationX;
+                var destinationRowSpan = target.GetRowSpan(y);
+                int elevationY;
                 if (matchingSizes)
                 {
-                    elevationX = x;
+                    elevationY = y;
                 }
                 else if (projection.EqualArea)
                 {
-                    var longitude = SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(x, xLength, scale, projection);
-                    elevationX = SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    var latitude = SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(y, yLength, scale, projection);
+                    elevationY = SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
                 }
                 else
                 {
-                    var longitude = SurfaceMap.GetLongitudeOfEquirectangularProjection(x, xLength, stretch, projection);
-                    elevationX = SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    var latitude = SurfaceMap.GetLatitudeOfEquirectangularProjection(y, yLength, scale, projection);
+                    elevationY = SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
                 }
+                var elevationSpan = source.GetRowSpan(elevationY);
 
-                var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel;
-                if (normalElevation >= 0)
+                for (var x = 0; x < xLength; x++)
                 {
-                    destinationRowSpan[x] = landConverter(surfaceMap[x][y], normalElevation, x, y)
-                        .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
-                }
-                else
-                {
-                    destinationRowSpan[x] = oceanConverter(surfaceMap[x][y], normalElevation, x, y)
-                        .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, false);
+                    int elevationX;
+                    if (matchingSizes)
+                    {
+                        elevationX = x;
+                    }
+                    else if (projection.EqualArea)
+                    {
+                        var longitude = SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(x, xLength, scale, projection);
+                        elevationX = SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    }
+                    else
+                    {
+                        var longitude = SurfaceMap.GetLongitudeOfEquirectangularProjection(x, xLength, stretch, projection);
+                        elevationX = SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    }
+
+                    var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel;
+                    if (normalElevation >= 0)
+                    {
+                        destinationRowSpan[x] = landConverter(surfaceMap[x][y], normalElevation, x, y)
+                            .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
+                    }
+                    else
+                    {
+                        destinationRowSpan[x] = oceanConverter(surfaceMap[x][y], normalElevation, x, y)
+                            .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, false);
+                    }
                 }
             }
-        }
+        });
         return destination;
     }
 
@@ -2161,59 +2208,62 @@ public static class SurfaceMapImage
         var stretch = scale / projection.ScaleFactor;
         var elevationScale = matchingSizes ? 0 : SurfaceMap.GetScale(elevationYLength, elevationProjection.Range, elevationProjection.EqualArea);
 
-        for (var y = 0; y < yLength; y++)
+        elevationMap.ProcessPixelRows(destination, (source, target) =>
         {
-            var destinationRowSpan = destination.GetPixelRowSpan(y);
-            int elevationY;
-            var latitude = projection.EqualArea
-                ? SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(y, yLength, scale, projection)
-                : SurfaceMap.GetLatitudeOfEquirectangularProjection(y, yLength, scale, projection);
-            if (matchingSizes)
+            for (var y = 0; y < yLength; y++)
             {
-                elevationY = y;
-            }
-            else if (projection.EqualArea)
-            {
-                elevationY = SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
-            }
-            else
-            {
-                elevationY = SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
-            }
-            var elevationSpan = elevationMap.GetPixelRowSpan(elevationY);
-
-            for (var x = 0; x < xLength; x++)
-            {
-                int elevationX;
-                var longitude = projection.EqualArea
-                    ? SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(x, xLength, scale, projection)
-                    : SurfaceMap.GetLongitudeOfEquirectangularProjection(x, xLength, stretch, projection);
+                var destinationRowSpan = target.GetRowSpan(y);
+                int elevationY;
+                var latitude = projection.EqualArea
+                    ? SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(y, yLength, scale, projection)
+                    : SurfaceMap.GetLatitudeOfEquirectangularProjection(y, yLength, scale, projection);
                 if (matchingSizes)
                 {
-                    elevationX = x;
+                    elevationY = y;
                 }
                 else if (projection.EqualArea)
                 {
-                    elevationX = SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    elevationY = SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
                 }
                 else
                 {
-                    elevationX = SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    elevationY = SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, elevationYLength, elevationScale, elevationProjection);
                 }
+                var elevationSpan = source.GetRowSpan(elevationY);
 
-                var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel;
-                if (normalElevation >= 0)
+                for (var x = 0; x < xLength; x++)
                 {
-                    destinationRowSpan[x] = landConverter(surfaceMap[x][y], normalElevation, latitude, longitude)
-                        .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
-                }
-                else
-                {
-                    destinationRowSpan[x] = oceanConverter(surfaceMap[x][y], normalElevation, latitude, longitude)
-                        .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, false);
+                    int elevationX;
+                    var longitude = projection.EqualArea
+                        ? SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(x, xLength, scale, projection)
+                        : SurfaceMap.GetLongitudeOfEquirectangularProjection(x, xLength, stretch, projection);
+                    if (matchingSizes)
+                    {
+                        elevationX = x;
+                    }
+                    else if (projection.EqualArea)
+                    {
+                        elevationX = SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    }
+                    else
+                    {
+                        elevationX = SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
+                    }
+
+                    var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel;
+                    if (normalElevation >= 0)
+                    {
+                        destinationRowSpan[x] = landConverter(surfaceMap[x][y], normalElevation, latitude, longitude)
+                            .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
+                    }
+                    else
+                    {
+                        destinationRowSpan[x] = oceanConverter(surfaceMap[x][y], normalElevation, latitude, longitude)
+                            .ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, false);
+                    }
                 }
             }
-        }
+        });
         return destination;
     }
 
@@ -2554,36 +2604,39 @@ public static class SurfaceMapImage
         var stretch = scale / projection.ScaleFactor;
 
         var image = new Image<L16>(xResolution, resolution);
-        for (var y = 0; y < resolution; y++)
+        image.ProcessPixelRows(accessor =>
         {
-            var latitude = projection.EqualArea
-                ? SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(
-                    y,
-                    resolution,
-                    scale,
-                    projection)
-                : SurfaceMap.GetLatitudeOfEquirectangularProjection(
-                    y,
-                    resolution,
-                    scale,
-                    projection);
-            var span = image.GetPixelRowSpan(y);
-            for (var x = 0; x < xResolution; x++)
+            for (var y = 0; y < resolution; y++)
             {
-                var longitude = projection.EqualArea
-                    ? SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(
-                        x,
-                        xResolution,
+                var latitude = projection.EqualArea
+                    ? SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(
+                        y,
+                        resolution,
                         scale,
                         projection)
-                    : SurfaceMap.GetLongitudeOfEquirectangularProjection(
-                        x,
-                        xResolution,
-                        stretch,
+                    : SurfaceMap.GetLatitudeOfEquirectangularProjection(
+                        y,
+                        resolution,
+                        scale,
                         projection);
-                span[x] = new L16(DoubleToLuminance(func(latitude, longitude), canBeNegative));
+                var span = accessor.GetRowSpan(y);
+                for (var x = 0; x < xResolution; x++)
+                {
+                    var longitude = projection.EqualArea
+                        ? SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(
+                            x,
+                            xResolution,
+                            scale,
+                            projection)
+                        : SurfaceMap.GetLongitudeOfEquirectangularProjection(
+                            x,
+                            xResolution,
+                            stretch,
+                            projection);
+                    span[x] = new L16(DoubleToLuminance(func(latitude, longitude), canBeNegative));
+                }
             }
-        }
+        });
         return image;
     }
 
@@ -2657,64 +2710,67 @@ public static class SurfaceMapImage
         }
 
         var image = new Image<L16>(xResolution, resolution);
-        var longitudes = new Dictionary<int, double>();
-        for (var y = 0; y < resolution; y++)
+        otherMap.ProcessPixelRows(image, (source, target) =>
         {
-            var latitude = options.EqualArea
-                ? SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(
-                    y,
-                    resolution,
-                    scale,
-                    options)
-                : SurfaceMap.GetLatitudeOfEquirectangularProjection(
-                    y,
-                    resolution,
-                    scale,
-                    options);
-            int otherY;
-            if (match)
+            var longitudes = new Dictionary<int, double>();
+            for (var y = 0; y < resolution; y++)
             {
-                otherY = y;
-            }
-            else
-            {
-                otherY = otherOptions.EqualArea
-                    ? SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, otherResolution, otherScale, otherOptions)
-                    : SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, otherResolution, otherScale, otherOptions);
-            }
-            var span = image.GetPixelRowSpan(y);
-            var otherSpan = otherMap.GetPixelRowSpan(otherY);
-            for (var x = 0; x < xResolution; x++)
-            {
-                if (!longitudes.TryGetValue(x, out var longitude))
-                {
-                    longitude = options.EqualArea
-                        ? SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(
-                            x,
-                            xResolution,
-                            scale,
-                            options)
-                        : SurfaceMap.GetLongitudeOfEquirectangularProjection(
-                            x,
-                            xResolution,
-                            stretch,
-                            options);
-                    longitudes.Add(x, longitude);
-                }
-                int otherX;
+                var latitude = options.EqualArea
+                    ? SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(
+                        y,
+                        resolution,
+                        scale,
+                        options)
+                    : SurfaceMap.GetLatitudeOfEquirectangularProjection(
+                        y,
+                        resolution,
+                        scale,
+                        options);
+                int otherY;
                 if (match)
                 {
-                    otherX = x;
+                    otherY = y;
                 }
                 else
                 {
-                    otherX = otherOptions.EqualArea
-                        ? SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, otherXResolution, otherScale, otherOptions)
-                        : SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, otherXResolution, otherScale, otherOptions);
+                    otherY = otherOptions.EqualArea
+                        ? SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, otherResolution, otherScale, otherOptions)
+                        : SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, otherResolution, otherScale, otherOptions);
                 }
-                span[x] = new L16(DoubleToLuminance(func(latitude, longitude, otherSpan[otherX].GetValueFromPixel_PosNeg())));
+                var span = target.GetRowSpan(y);
+                var otherSpan = source.GetRowSpan(otherY);
+                for (var x = 0; x < xResolution; x++)
+                {
+                    if (!longitudes.TryGetValue(x, out var longitude))
+                    {
+                        longitude = options.EqualArea
+                            ? SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(
+                                x,
+                                xResolution,
+                                scale,
+                                options)
+                            : SurfaceMap.GetLongitudeOfEquirectangularProjection(
+                                x,
+                                xResolution,
+                                stretch,
+                                options);
+                        longitudes.Add(x, longitude);
+                    }
+                    int otherX;
+                    if (match)
+                    {
+                        otherX = x;
+                    }
+                    else
+                    {
+                        otherX = otherOptions.EqualArea
+                            ? SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, otherXResolution, otherScale, otherOptions)
+                            : SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, otherXResolution, otherScale, otherOptions);
+                    }
+                    span[x] = new L16(DoubleToLuminance(func(latitude, longitude, otherSpan[otherX].GetValueFromPixel_PosNeg())));
+                }
             }
-        }
+        });
         return image;
     }
 
@@ -2791,70 +2847,73 @@ public static class SurfaceMapImage
 
         var first = new Image<L16>(xResolution, resolution);
         var second = new Image<L16>(xResolution, resolution);
-        var longitudes = new Dictionary<int, double>();
-        for (var y = 0; y < resolution; y++)
+        first.ProcessPixelRows(second, (source1, source2) =>
         {
-            var latitude = options.EqualArea
-                ? SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(
-                    y,
-                    resolution,
-                    scale,
-                    options)
-                : SurfaceMap.GetLatitudeOfEquirectangularProjection(
-                    y,
-                    resolution,
-                    scale,
-                    options);
-            int otherY;
-            if (match || noOtherMaps)
+            var longitudes = new Dictionary<int, double>();
+            for (var y = 0; y < resolution; y++)
             {
-                otherY = y;
-            }
-            else
-            {
-                otherY = otherOptions.EqualArea
-                    ? SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, otherResolution, otherScale, otherOptions)
-                    : SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, otherResolution, otherScale, otherOptions);
-            }
-            var firstSpan = first.GetPixelRowSpan(y);
-            var secondSpan = second.GetPixelRowSpan(y);
-            for (var x = 0; x < xResolution; x++)
-            {
-                if (!longitudes.TryGetValue(x, out var longitude))
-                {
-                    longitude = options.EqualArea
-                        ? SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(
-                            x,
-                            xResolution,
-                            scale,
-                            options)
-                        : SurfaceMap.GetLongitudeOfEquirectangularProjection(
-                            x,
-                            xResolution,
-                            stretch,
-                            options);
-                    longitudes.Add(x, longitude);
-                }
-                int otherX;
+                var latitude = options.EqualArea
+                    ? SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(
+                        y,
+                        resolution,
+                        scale,
+                        options)
+                    : SurfaceMap.GetLatitudeOfEquirectangularProjection(
+                        y,
+                        resolution,
+                        scale,
+                        options);
+                int otherY;
                 if (match || noOtherMaps)
                 {
-                    otherX = x;
+                    otherY = y;
                 }
                 else
                 {
-                    otherX = otherOptions.EqualArea
-                        ? SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, otherXResolution, otherScale, otherOptions)
-                        : SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, otherXResolution, otherScale, otherOptions);
+                    otherY = otherOptions.EqualArea
+                        ? SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, otherResolution, otherScale, otherOptions)
+                        : SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, otherResolution, otherScale, otherOptions);
                 }
-                var (firstValue, secondValue) = func(
-                    latitude, longitude,
-                    noOtherMaps
-                        ? 0
-                        : InterpolateAmongImages(otherMaps, proportionOfYear, otherX, otherY));
-                firstSpan[x] = new L16(DoubleToLuminance(firstValue));
-                secondSpan[x] = new L16(DoubleToLuminance(secondValue));
+                var firstSpan = source1.GetRowSpan(y);
+                var secondSpan = source2.GetRowSpan(y);
+                for (var x = 0; x < xResolution; x++)
+                {
+                    if (!longitudes.TryGetValue(x, out var longitude))
+                    {
+                        longitude = options.EqualArea
+                            ? SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(
+                                x,
+                                xResolution,
+                                scale,
+                                options)
+                            : SurfaceMap.GetLongitudeOfEquirectangularProjection(
+                                x,
+                                xResolution,
+                                stretch,
+                                options);
+                        longitudes.Add(x, longitude);
+                    }
+                    int otherX;
+                    if (match || noOtherMaps)
+                    {
+                        otherX = x;
+                    }
+                    else
+                    {
+                        otherX = otherOptions.EqualArea
+                            ? SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, otherXResolution, otherScale, otherOptions)
+                            : SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, otherXResolution, otherScale, otherOptions);
+                    }
+                    var (firstValue, secondValue) = func(
+                        latitude, longitude,
+                        noOtherMaps
+                            ? 0
+                            : InterpolateAmongImages(otherMaps, proportionOfYear, otherX, otherY));
+                    firstSpan[x] = new L16(DoubleToLuminance(firstValue));
+                    secondSpan[x] = new L16(DoubleToLuminance(secondValue));
+                }
             }
-        }
+        });
         return (first, second);
     }
 
@@ -2876,14 +2935,17 @@ public static class SurfaceMapImage
             return image;
         }
 
-        for (var y = 0; y < resolution; y++)
+        image.ProcessPixelRows(accessor =>
         {
-            var span = image.GetPixelRowSpan(y);
-            for (var x = 0; x < xResolution; x++)
+            for (var y = 0; y < resolution; y++)
             {
-                span[x] = new L16(32767);
+                var span = accessor.GetRowSpan(y);
+                for (var x = 0; x < xResolution; x++)
+                {
+                    span[x] = new L16(32767);
+                }
             }
-        }
+        });
         return image;
     }
 
@@ -2937,16 +2999,19 @@ public static class SurfaceMapImage
         }
 
         var combined = new Image<L16>(image1.Width, image1.Height);
-        for (var y = 0; y < image1.Height; y++)
+        image1.ProcessPixelRows(image2, combined, (source1, source2, target) =>
         {
-            var img1Span = image1.GetPixelRowSpan(y);
-            var img2Span = image2.GetPixelRowSpan(y);
-            var combinedSpan = combined.GetPixelRowSpan(y);
-            for (var x = 0; x < image1.Width; x++)
+            for (var y = 0; y < image1.Height; y++)
             {
-                combinedSpan[x] = img1Span[x].Lerp(img2Span[x], weight);
+                var img1Span = source1.GetRowSpan(y);
+                var img2Span = source2.GetRowSpan(y);
+                var combinedSpan = target.GetRowSpan(y);
+                for (var x = 0; x < image1.Width; x++)
+                {
+                    combinedSpan[x] = img1Span[x].Lerp(img2Span[x], weight);
+                }
             }
-        }
+        });
 
         return combined;
     }
@@ -3047,15 +3112,11 @@ public static class SurfaceMapImage
         var maxLon = LongitudeBounded(projection.CentralMeridian + halfLonRange);
         if (minLat > maxLat)
         {
-            var tmp = minLat;
-            minLat = maxLat;
-            maxLat = tmp;
+            (maxLat, minLat) = (minLat, maxLat);
         }
         if (minLon > maxLon)
         {
-            var tmp = minLon;
-            minLon = maxLon;
-            maxLon = tmp;
+            (maxLon, minLon) = (minLon, maxLon);
         }
         return (
             minLat,
