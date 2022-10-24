@@ -341,6 +341,7 @@ public static class PlanetoidMap
         var trueAnomaly = planet.WinterSolsticeTrueAnomaly;
         var trueAnomalyPerSeason = DoubleConstants.TwoPi / steps;
 
+        // generate at normal projection, for which noise functions have been optimized
         for (var i = 0; i < steps; i++)
         {
             var solarDeclination = planet.GetSolarDeclination(trueAnomaly);
@@ -363,12 +364,24 @@ public static class PlanetoidMap
                 resolution,
                 proportionOfYearAtMidpoint,
                 temperatureProjection ?? MapProjectionOptions.Default,
-                options);
+                MapProjectionOptions.Default);
             proportionOfYearAtMidpoint += proportionOfYear;
             trueAnomaly += trueAnomalyPerSeason;
             if (trueAnomaly >= DoubleConstants.TwoPi)
             {
                 trueAnomaly -= DoubleConstants.TwoPi;
+            }
+        }
+        if (options != MapProjectionOptions.Default)
+        {
+            for (var i = 0; i < steps; i++)
+            {
+                var projected = precipitationMaps[i].GetMapProjection(
+                    resolution,
+                    null,
+                    options)!;
+                precipitationMaps[i].Dispose();
+                precipitationMaps[i] = projected;
             }
         }
 

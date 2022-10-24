@@ -12,7 +12,7 @@ namespace Tavenem.Universe.Maps;
 /// A collection of weather maps providing yearlong climate data.
 /// </summary>
 [Serializable]
-public struct WeatherMaps : ISerializable
+public readonly struct WeatherMaps : ISerializable
 {
     /// <summary>
     /// The overall <see cref="BiomeType"/> of the area.
@@ -164,6 +164,8 @@ public struct WeatherMaps : ISerializable
         {
             for (var y = 0; y < resolution; y++)
             {
+                normalizedElevations[y] = new double[xLength];
+
                 var latitude = projection.EqualArea
                     ? SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(y, resolution, scale, projection)
                     : SurfaceMap.GetLatitudeOfEquirectangularProjection(y, resolution, scale, projection);
@@ -174,8 +176,6 @@ public struct WeatherMaps : ISerializable
                 var elevationSpan = accessor.GetRowSpan(elevationYs[y]);
                 for (var x = 0; x < xLength; x++)
                 {
-                    normalizedElevations[y] = new double[xLength];
-
                     if (!xToEX.TryGetValue(x, out var elevationX))
                     {
                         var longitude = projection.EqualArea
@@ -321,7 +321,10 @@ public struct WeatherMaps : ISerializable
                             Math.Min(winterTemperature, summerTemperature),
                             Math.Max(winterTemperature, summerTemperature)));
                         humidityMap[x][y] = Universe.Climate.Climate.GetHumidityType(precipitation);
-                        biomeMap[x][y] = Universe.Climate.Climate.GetBiomeType(climateMap[x][y], humidityMap[x][y], normalizedElevations[y][x]);
+                        biomeMap[x][y] = Universe.Climate.Climate.GetBiomeType(
+                            climateMap[x][y],
+                            humidityMap[x][y],
+                            normalizedElevations[y][x]);
 
                         if (normalizedElevations[y][x] > 0
                             || (summerTemperature >= Substances.All.Seawater.MeltingPoint

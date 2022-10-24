@@ -5,7 +5,7 @@ namespace Tavenem.Universe.Maps;
 /// <summary>
 /// Options for projecting a map.
 /// </summary>
-public class MapProjectionOptions
+public class MapProjectionOptions : IEquatable<MapProjectionOptions>
 {
     /// <summary>
     /// An equirectangular projection of the entire globe, with the standard parallel at the
@@ -241,4 +241,51 @@ public class MapProjectionOptions
             standardParallels ?? StandardParallels,
             range ?? Range,
             equalArea ?? EqualArea);
+
+    /// <inheritdoc/>
+    public bool Equals(MapProjectionOptions? other) => other is not null
+        && AspectRatio == other.AspectRatio
+        && CentralMeridian == other.CentralMeridian
+        && CentralParallel == other.CentralParallel
+        && EqualArea == other.EqualArea
+        && Range == other.Range
+        && ScaleFactor == other.ScaleFactor
+        && ScaleFactorSquared == other.ScaleFactorSquared
+        && StandardParallels == other.StandardParallels;
+
+    /// <inheritdoc/>
+    public override bool Equals(object? obj) => obj is MapProjectionOptions options && Equals(options);
+
+    /// <inheritdoc/>
+    public override int GetHashCode() => HashCode.Combine(
+        AspectRatio,
+        CentralMeridian,
+        CentralParallel,
+        EqualArea,
+        Range,
+        ScaleFactor,
+        ScaleFactorSquared,
+        StandardParallels);
+
+    /// <summary>
+    /// Determine whether two <see cref="MapProjectionOptions"/> instances are equal.
+    /// </summary>
+    /// <param name="left">The first <see cref="MapProjectionOptions"/> instance.</param>
+    /// <param name="right">The second <see cref="MapProjectionOptions"/> instance.</param>
+    /// <returns>
+    /// <see langword="true"/> if the two <see cref="MapProjectionOptions"/> instances are equal;
+    /// otherwise <see langword="false"/>.
+    /// </returns>
+    public static bool operator ==(MapProjectionOptions? left, MapProjectionOptions? right) => EqualityComparer<MapProjectionOptions>.Default.Equals(left, right);
+
+    /// <summary>
+    /// Determine whether two <see cref="MapProjectionOptions"/> instances are unequal.
+    /// </summary>
+    /// <param name="left">The first <see cref="MapProjectionOptions"/> instance.</param>
+    /// <param name="right">The second <see cref="MapProjectionOptions"/> instance.</param>
+    /// <returns>
+    /// <see langword="true"/> if the two <see cref="MapProjectionOptions"/> instances are unequal;
+    /// otherwise <see langword="false"/>.
+    /// </returns>
+    public static bool operator !=(MapProjectionOptions? left, MapProjectionOptions? right) => !(left == right);
 }
