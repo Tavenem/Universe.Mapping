@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.2-preview
+### Changed
+- Update to .NET 7
+
 ## 0.6.1-preview
 ### Fixed
 - Weather mapping

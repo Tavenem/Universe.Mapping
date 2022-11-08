@@ -22,7 +22,7 @@ public class MappingTests
     private const int ProjectionResolution = 640;
     private const int Seasons = 2;
 
-    private static readonly HillShadingOptions _HillShading = new (true, false, 8);
+    private static readonly HillShadingOptions _HillShading = new(true, false, 8);
 
     private static string _OutputPath = string.Empty;
 
@@ -83,9 +83,9 @@ public class MappingTests
         {
             for (var y = 0; y < maps.YLength; y++)
             {
-                if (biomes.ContainsKey(maps.BiomeMap[x][y]))
+                if (biomes.TryGetValue(maps.BiomeMap[x][y], out var biome))
                 {
-                    biomes[maps.BiomeMap[x][y]]++;
+                    biomes[maps.BiomeMap[x][y]] = biome + 1;
                 }
                 else
                 {
@@ -129,9 +129,9 @@ public class MappingTests
                 {
                     continue;
                 }
-                if (climates.ContainsKey(maps.ClimateMap[x][y]))
+                if (climates.TryGetValue(maps.ClimateMap[x][y], out var climate))
                 {
-                    climates[maps.ClimateMap[x][y]]++;
+                    climates[maps.ClimateMap[x][y]] = climate + 1;
                 }
                 else
                 {
