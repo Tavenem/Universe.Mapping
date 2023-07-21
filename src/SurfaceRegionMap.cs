@@ -427,7 +427,7 @@ public static class SurfaceRegionMap
     /// <param name="region">The region being mapped.</param>
     /// <param name="planet">The planet being mapped.</param>
     /// <param name="winterTemperatures">A planetary winter temperature map.</param>
-    /// <param name="summerTemperatues">A planetary summer temperature map.</param>
+    /// <param name="summerTemperatures">A planetary summer temperature map.</param>
     /// <param name="resolution">The vertical resolution of the projection.</param>
     /// <param name="steps">
     /// The number of maps to generate internally (representing evenly spaced "seasons" during a
@@ -448,7 +448,7 @@ public static class SurfaceRegionMap
         this SurfaceRegion region,
         Planetoid planet,
         Image<L16> winterTemperatures,
-        Image<L16> summerTemperatues,
+        Image<L16> summerTemperatures,
         int resolution,
         int steps = 1,
         bool equalArea = false)
@@ -456,7 +456,7 @@ public static class SurfaceRegionMap
         var projection = region.GetProjection(planet, equalArea);
         return planet.GetPrecipitationAndSnowfallMaps(
                 winterTemperatures,
-                summerTemperatues,
+                summerTemperatures,
                 resolution,
                 steps,
                 projection,
@@ -464,7 +464,7 @@ public static class SurfaceRegionMap
     }
 
     /// <summary>
-    /// Gets the map projection opions which represent this region.
+    /// Gets the map projection options which represent this region.
     /// </summary>
     /// <param name="region">The mapped region.</param>
     /// <param name="planet">The planet on which this region occurs.</param>
@@ -473,8 +473,8 @@ public static class SurfaceRegionMap
     public static MapProjectionOptions GetProjection(this SurfaceRegion region, Planetoid planet, bool equalArea = false)
         => new(planet.VectorToLongitude(region.PlanetaryPosition),
             planet.VectorToLatitude(region.PlanetaryPosition),
-            range: (double)((Frustum<HugeNumber>)region.Shape).FieldOfViewAngle,
-            equalArea: equalArea);
+            Range: (double)((Frustum<HugeNumber>)region.Shape).FieldOfViewAngle,
+            EqualArea: equalArea);
 
     /// <summary>
     /// Calculates the x and y coordinates on an equirectangular projection that correspond to a

@@ -1,17 +1,72 @@
-﻿using Tavenem.Mathematics;
+﻿using System.Text.Json.Serialization;
+using Tavenem.Mathematics;
 
 namespace Tavenem.Universe.Maps;
 
 /// <summary>
 /// Options for projecting a map.
 /// </summary>
-public class MapProjectionOptions : IEquatable<MapProjectionOptions>
+/// <param name="CentralMeridian">
+/// <para>
+/// The longitude of the central meridian of the projection, in radians.
+/// </para>
+/// <para>
+/// Values are truncated to the range -π..π.
+/// </para>
+/// </param>
+/// <param name="CentralParallel">
+/// <para>
+/// The latitude of the central parallel of the projection, in radians.
+/// </para>
+/// <para>
+/// Values are truncated to the range -π/2..π/2.
+/// </para>
+/// </param>
+/// <param name="StandardParallels">
+/// <para>
+/// The latitude of the standard parallels (north and south of the equator) where the scale
+/// of the projection is 1:1, in radians.
+/// </para>
+/// <para>
+/// It does not matter whether the positive or negative latitude is provided, if it is
+/// non-zero.
+/// </para>
+/// <para>
+/// If left <see langword="null"/> the central parallel is assumed.
+/// </para>
+/// <para>
+/// Values are truncated to the range -π/2..π/2.
+/// </para>
+/// </param>
+/// <param name="Range">
+/// <para>
+/// If provided, indicates the latitude range (north and south of the central parallel)
+/// shown on the projection, in radians.
+/// </para>
+/// <para>
+/// If left <see langword="null"/>, or equal to zero, the full globe is projected.
+/// </para>
+/// <para>
+/// Values are truncated to the range 0..π.
+/// </para>
+/// </param>
+/// <param name="EqualArea">
+/// Indicates whether the projection is to be cylindrical equal-area (rather than
+/// equirectangular).
+/// </param>
+[method: JsonConstructor]
+public readonly record struct MapProjectionOptions(
+    double CentralMeridian = 0,
+    double CentralParallel = 0,
+    double? StandardParallels = null,
+    double? Range = null,
+    bool EqualArea = false)
 {
     /// <summary>
     /// An equirectangular projection of the entire globe, with the standard parallel at the
     /// equator.
     /// </summary>
-    public static MapProjectionOptions Default { get; } = new();
+    public static MapProjectionOptions Default { get; } = new(EqualArea: false);
 
     /// <summary>
     /// <para>
@@ -24,7 +79,10 @@ public class MapProjectionOptions : IEquatable<MapProjectionOptions>
     /// Equal to ScaleFactor²π for a cylindrical equal-area projection.
     /// </para>
     /// </summary>
-    public double AspectRatio { get; }
+    [JsonIgnore]
+    public double AspectRatio { get; } = EqualArea
+        ? Math.PI * Math.Cos(StandardParallels ?? CentralParallel).Square()
+        : 2;
 
     /// <summary>
     /// <para>
@@ -34,7 +92,7 @@ public class MapProjectionOptions : IEquatable<MapProjectionOptions>
     /// Values are truncated to the range -π..π.
     /// </para>
     /// </summary>
-    public double CentralMeridian { get; }
+    public double CentralMeridian { get; } = CentralMeridian.Clamp(-Math.PI, Math.PI);
 
     /// <summary>
     /// <para>
@@ -44,13 +102,7 @@ public class MapProjectionOptions : IEquatable<MapProjectionOptions>
     /// Values are truncated to the range -π/2..π/2.
     /// </para>
     /// </summary>
-    public double CentralParallel { get; }
-
-    /// <summary>
-    /// Indicates whether the projection is to be cylindrical equal-area (rather than
-    /// equirectangular).
-    /// </summary>
-    public bool EqualArea { get; }
+    public double CentralParallel { get; } = CentralParallel.Clamp(-DoubleConstants.HalfPi, DoubleConstants.HalfPi);
 
     /// <summary>
     /// <para>
@@ -64,17 +116,15 @@ public class MapProjectionOptions : IEquatable<MapProjectionOptions>
     /// Values are truncated to the range 0..π.
     /// </para>
     /// </summary>
-    public double? Range { get; }
+    public double? Range { get; } = Range.HasValue
+        ? Range.Value.Clamp(0, Math.PI)
+        : null;
 
     /// <summary>
     /// The cosine of the standard parallel.
     /// </summary>
-    public double ScaleFactor { get; }
-
-    /// <summary>
-    /// The cosine of the standard parallel, squared.
-    /// </summary>
-    public double ScaleFactorSquared { get; }
+    [JsonIgnore]
+    public double ScaleFactor { get; } = Math.Cos(StandardParallels ?? CentralParallel);
 
     /// <summary>
     /// <para>
@@ -92,20 +142,13 @@ public class MapProjectionOptions : IEquatable<MapProjectionOptions>
     /// Values are truncated to the range -π/2..π/2.
     /// </para>
     /// </summary>
-    public double? StandardParallels { get; }
+    public double? StandardParallels { get; } = StandardParallels.HasValue
+        ? StandardParallels.Value.Clamp(-DoubleConstants.HalfPi, DoubleConstants.HalfPi)
+        : null;
 
     /// <summary>
-    /// Initializes a new instance of <see cref="MapProjectionOptions"/>.
-    /// </summary>
-    public MapProjectionOptions()
-    {
-        ScaleFactor = 1;
-        ScaleFactorSquared = 1;
-        AspectRatio = 2;
-    }
-
-    /// <summary>
-    /// Initializes a new instance of <see cref="MapProjectionOptions"/>.
+    /// Gets a new instance of <see cref="MapProjectionOptions"/> with the same properties as this
+    /// one, except the values indicated.
     /// </summary>
     /// <param name="centralMeridian">
     /// <para>
@@ -125,87 +168,11 @@ public class MapProjectionOptions : IEquatable<MapProjectionOptions>
     /// </param>
     /// <param name="standardParallels">
     /// <para>
-    /// The latitude of the standard parallels (north and south of the equator) where the scale
-    /// of the projection is 1:1, in radians.
+    /// The latitude of the standard parallels (north and south of the equator) where the scale of
+    /// the projection is 1:1, in radians.
     /// </para>
     /// <para>
-    /// It does not matter whether the positive or negative latitude is provided, if it is
-    /// non-zero.
-    /// </para>
-    /// <para>
-    /// If left <see langword="null"/> the central parallel is assumed.
-    /// </para>
-    /// <para>
-    /// Values are truncated to the range -π/2..π/2.
-    /// </para>
-    /// </param>
-    /// <param name="range">
-    /// <para>
-    /// If provided, indicates the latitude range (north and south of the central parallel)
-    /// shown on the projection, in radians.
-    /// </para>
-    /// <para>
-    /// If left <see langword="null"/>, or equal to zero, the full globe is projected.
-    /// </para>
-    /// <para>
-    /// Values are truncated to the range 0..π.
-    /// </para>
-    /// </param>
-    /// <param name="equalArea">
-    /// Indicates whether the projection is to be cylindrical equal-area (rather than
-    /// equirectangular).
-    /// </param>
-    public MapProjectionOptions(
-        double centralMeridian = 0,
-        double centralParallel = 0,
-        double? standardParallels = null,
-        double? range = null,
-        bool equalArea = false)
-    {
-        CentralMeridian = centralMeridian.Clamp(-Math.PI, Math.PI);
-        CentralParallel = centralParallel.Clamp(-DoubleConstants.HalfPi, DoubleConstants.HalfPi);
-        EqualArea = equalArea;
-        Range = range.HasValue
-            ? range.Value.Clamp(0, Math.PI)
-            : null;
-        StandardParallels = standardParallels.HasValue
-            ? standardParallels.Value.Clamp(-DoubleConstants.HalfPi, DoubleConstants.HalfPi)
-            : null;
-        ScaleFactor = Math.Cos(StandardParallels ?? CentralParallel);
-        ScaleFactorSquared = ScaleFactor * ScaleFactor;
-        AspectRatio = equalArea
-            ? Math.PI * ScaleFactorSquared
-            : 2;
-    }
-
-    /// <summary>
-    /// Gets a new instance of <see cref="MapProjectionOptions"/> with the same properties as
-    /// this one, except the values indicated.
-    /// </summary>
-    /// <param name="centralMeridian">
-    /// <para>
-    /// The longitude of the central meridian of the projection, in radians.
-    /// </para>
-    /// <para>
-    /// Values are truncated to the range -π..π.
-    /// </para>
-    /// </param>
-    /// <param name="centralParallel">
-    /// <para>
-    /// The latitude of the central parallel of the projection, in radians.
-    /// </para>
-    /// <para>
-    /// Values are truncated to the range -π/2..π/2.
-    /// </para>
-    /// </param>
-    /// <param name="standardParallels">
-    /// <para>
-    /// The latitude of the standard parallels (north and south of the equator) where the scale
-    /// of the projection is 1:1, in radians.
-    /// </para>
-    /// <para>
-    /// It does not matter whether the positive or negative latitude is provided, if it is
-    /// non-zero.
+    /// It does not matter whether the positive or negative latitude is provided, if it is non-zero.
     /// </para>
     /// <para>
     /// If left <see langword="null"/> the central parallel is assumed.
@@ -216,8 +183,8 @@ public class MapProjectionOptions : IEquatable<MapProjectionOptions>
     /// </param>
     /// <param name="range">
     /// <para>
-    /// If provided, indicates the latitude range (north and south of the central parallel)
-    /// shown on the projection, in radians.
+    /// If provided, indicates the latitude range (north and south of the central parallel) shown on
+    /// the projection, in radians.
     /// </para>
     /// <para>
     /// If left <see langword="null"/>, or equal to zero, the full globe is projected.
@@ -241,51 +208,4 @@ public class MapProjectionOptions : IEquatable<MapProjectionOptions>
             standardParallels ?? StandardParallels,
             range ?? Range,
             equalArea ?? EqualArea);
-
-    /// <inheritdoc/>
-    public bool Equals(MapProjectionOptions? other) => other is not null
-        && AspectRatio == other.AspectRatio
-        && CentralMeridian == other.CentralMeridian
-        && CentralParallel == other.CentralParallel
-        && EqualArea == other.EqualArea
-        && Range == other.Range
-        && ScaleFactor == other.ScaleFactor
-        && ScaleFactorSquared == other.ScaleFactorSquared
-        && StandardParallels == other.StandardParallels;
-
-    /// <inheritdoc/>
-    public override bool Equals(object? obj) => obj is MapProjectionOptions options && Equals(options);
-
-    /// <inheritdoc/>
-    public override int GetHashCode() => HashCode.Combine(
-        AspectRatio,
-        CentralMeridian,
-        CentralParallel,
-        EqualArea,
-        Range,
-        ScaleFactor,
-        ScaleFactorSquared,
-        StandardParallels);
-
-    /// <summary>
-    /// Determine whether two <see cref="MapProjectionOptions"/> instances are equal.
-    /// </summary>
-    /// <param name="left">The first <see cref="MapProjectionOptions"/> instance.</param>
-    /// <param name="right">The second <see cref="MapProjectionOptions"/> instance.</param>
-    /// <returns>
-    /// <see langword="true"/> if the two <see cref="MapProjectionOptions"/> instances are equal;
-    /// otherwise <see langword="false"/>.
-    /// </returns>
-    public static bool operator ==(MapProjectionOptions? left, MapProjectionOptions? right) => EqualityComparer<MapProjectionOptions>.Default.Equals(left, right);
-
-    /// <summary>
-    /// Determine whether two <see cref="MapProjectionOptions"/> instances are unequal.
-    /// </summary>
-    /// <param name="left">The first <see cref="MapProjectionOptions"/> instance.</param>
-    /// <param name="right">The second <see cref="MapProjectionOptions"/> instance.</param>
-    /// <returns>
-    /// <see langword="true"/> if the two <see cref="MapProjectionOptions"/> instances are unequal;
-    /// otherwise <see langword="false"/>.
-    /// </returns>
-    public static bool operator !=(MapProjectionOptions? left, MapProjectionOptions? right) => !(left == right);
 }

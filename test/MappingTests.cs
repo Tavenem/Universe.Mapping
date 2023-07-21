@@ -60,17 +60,17 @@ public class MappingTests
 
     [TestMethod]
     public void SurfaceMappingEqualAreaPregenTest()
-        => SurfaceMapping(new MapProjectionOptions(equalArea: true), "Pregen_", "_EA", true);
+        => SurfaceMapping(new MapProjectionOptions(EqualArea: true), "Pregen_", "_EA", true);
 
     [TestMethod]
     public void SurfaceMappingEqualAreaTest()
-        => SurfaceMapping(new MapProjectionOptions(equalArea: true), "Random_", "_EA");
+        => SurfaceMapping(new MapProjectionOptions(EqualArea: true), "Random_", "_EA");
 
     private static void AddClimateString(
         StringBuilder sb,
         Image<L16> elevationMap,
         double normalizedSeaLevel,
-        int landCoords,
+        int landCoordinates,
         WeatherMaps maps)
     {
         if (maps.BiomeMap[0][0] == BiomeType.None)
@@ -141,79 +141,79 @@ public class MappingTests
         }
 
         sb.AppendLine("Climates:");
-        var desert = deserts * 100.0 / landCoords;
+        var desert = deserts * 100.0 / landCoordinates;
         sb.AppendFormat("  Desert:                  {0}% ({1:+0.##;-0.##;on-targ\\et})", Math.Round(desert, 2), Math.Round(desert - 14, 2));
         sb.AppendLine();
-        var polar = (climates.TryGetValue(ClimateType.Polar, out var value) ? value : 0) * 100.0 / landCoords;
+        var polar = (climates.TryGetValue(ClimateType.Polar, out var value) ? value : 0) * 100.0 / landCoordinates;
         sb.AppendFormat("  Polar:                   {0}% ({1:+0.##;-0.##;on-targ\\et})", Math.Round(polar, 2), Math.Round(polar - 20, 2));
         sb.AppendLine();
-        sb.AppendFormat("  Tundra:                  {0}%", Math.Round((biomes.TryGetValue(BiomeType.Tundra, out value) ? value : 0) * 100.0 / landCoords, 2));
+        sb.AppendFormat("  Tundra:                  {0}%", Math.Round((biomes.TryGetValue(BiomeType.Tundra, out value) ? value : 0) * 100.0 / landCoordinates, 2));
         sb.AppendLine();
-        var alpine = (biomes.TryGetValue(BiomeType.Alpine, out value) ? value : 0) * 100.0 / landCoords;
+        var alpine = (biomes.TryGetValue(BiomeType.Alpine, out value) ? value : 0) * 100.0 / landCoordinates;
         sb.AppendFormat("  Alpine:                  {0}% ({1:+0.##;-0.##;on-targ\\et})", Math.Round(alpine, 2), Math.Round(alpine - 3, 2));
         sb.AppendLine();
-        sb.AppendFormat("  Subalpine:               {0}%", Math.Round((biomes.TryGetValue(BiomeType.Subalpine, out value) ? value : 0) * 100.0 / landCoords, 2));
+        sb.AppendFormat("  Subalpine:               {0}%", Math.Round((biomes.TryGetValue(BiomeType.Subalpine, out value) ? value : 0) * 100.0 / landCoordinates, 2));
         sb.AppendLine();
         var boreal = climates.TryGetValue(ClimateType.Boreal, out value) ? value : 0;
-        sb.AppendFormat("  Boreal:                  {0}%", Math.Round(boreal * 100.0 / landCoords, 2));
+        sb.AppendFormat("  Boreal:                  {0}%", Math.Round(boreal * 100.0 / landCoordinates, 2));
         sb.AppendLine();
         sb.AppendFormat("    Lichen Woodland:       {0}% ({1}%)",
             boreal == 0 ? 0 : Math.Round((biomes.TryGetValue(BiomeType.LichenWoodland, out value) ? value : 0) * 100.0 / boreal, 2),
-            Math.Round((biomes.TryGetValue(BiomeType.LichenWoodland, out value) ? value : 0) * 100.0 / landCoords, 2));
+            Math.Round((biomes.TryGetValue(BiomeType.LichenWoodland, out value) ? value : 0) * 100.0 / landCoordinates, 2));
         sb.AppendLine();
         sb.AppendFormat("    Coniferous Forest:     {0}% ({1}%)",
             boreal == 0 ? 0 : Math.Round((biomes.TryGetValue(BiomeType.ConiferousForest, out value) ? value : 0) * 100.0 / boreal, 2),
-            Math.Round((biomes.TryGetValue(BiomeType.ConiferousForest, out value) ? value : 0) * 100.0 / landCoords, 2));
+            Math.Round((biomes.TryGetValue(BiomeType.ConiferousForest, out value) ? value : 0) * 100.0 / landCoordinates, 2));
         sb.AppendLine();
         var coolTemperate = climates.TryGetValue(ClimateType.CoolTemperate, out value) ? value : 0;
-        sb.AppendFormat("  Cool Temperate:          {0}%", Math.Round(coolTemperate * 100.0 / landCoords, 2));
+        sb.AppendFormat("  Cool Temperate:          {0}%", Math.Round(coolTemperate * 100.0 / landCoordinates, 2));
         sb.AppendLine();
         sb.AppendFormat("    Cold Desert:           {0}% ({1}%)",
             coolTemperate == 0 ? 0 : Math.Round((biomes.TryGetValue(BiomeType.ColdDesert, out value) ? value : 0) * 100.0 / coolTemperate, 2),
-            Math.Round((biomes.TryGetValue(BiomeType.ColdDesert, out value) ? value : 0) * 100.0 / landCoords, 2));
+            Math.Round((biomes.TryGetValue(BiomeType.ColdDesert, out value) ? value : 0) * 100.0 / landCoordinates, 2));
         sb.AppendLine();
         sb.AppendFormat("    Steppe:                {0}% ({1}%)",
             coolTemperate == 0 ? 0 : Math.Round((biomes.TryGetValue(BiomeType.Steppe, out value) ? value : 0) * 100.0 / coolTemperate, 2),
-            Math.Round((biomes.TryGetValue(BiomeType.Steppe, out value) ? value : 0) * 100.0 / landCoords, 2));
+            Math.Round((biomes.TryGetValue(BiomeType.Steppe, out value) ? value : 0) * 100.0 / landCoordinates, 2));
         sb.AppendLine();
         sb.AppendFormat("    Mixed Forest:          {0}% ({1}%)",
             coolTemperate == 0 ? 0 : Math.Round((biomes.TryGetValue(BiomeType.MixedForest, out value) ? value : 0) * 100.0 / coolTemperate, 2),
-            Math.Round((biomes.TryGetValue(BiomeType.MixedForest, out value) ? value : 0) * 100.0 / landCoords, 2));
+            Math.Round((biomes.TryGetValue(BiomeType.MixedForest, out value) ? value : 0) * 100.0 / landCoordinates, 2));
         sb.AppendLine();
         var warmTemperate = climates.TryGetValue(ClimateType.WarmTemperate, out value) ? value : 0;
-        sb.AppendFormat("  Warm Temperate:          {0}%", Math.Round(warmTemperate * 100.0 / landCoords, 2));
+        sb.AppendFormat("  Warm Temperate:          {0}%", Math.Round(warmTemperate * 100.0 / landCoordinates, 2));
         sb.AppendLine();
         sb.AppendFormat("    Desert:                {0}% ({1}%)",
             warmTemperate == 0 ? 0 : Math.Round(warmDeserts * 100.0 / warmTemperate, 2),
-            Math.Round(warmDeserts * 100.0 / landCoords, 2));
+            Math.Round(warmDeserts * 100.0 / landCoordinates, 2));
         sb.AppendLine();
         sb.AppendFormat("    Shrubland:             {0}% ({1}%)",
             warmTemperate == 0 ? 0 : Math.Round((biomes.TryGetValue(BiomeType.Shrubland, out value) ? value : 0) * 100.0 / warmTemperate, 2),
-            Math.Round((biomes.TryGetValue(BiomeType.Shrubland, out value) ? value : 0) * 100.0 / landCoords, 2));
+            Math.Round((biomes.TryGetValue(BiomeType.Shrubland, out value) ? value : 0) * 100.0 / landCoordinates, 2));
         sb.AppendLine();
         sb.AppendFormat("    Deciduous Forest:      {0}% ({1}%)",
             warmTemperate == 0 ? 0 : Math.Round((biomes.TryGetValue(BiomeType.DeciduousForest, out value) ? value : 0) * 100.0 / warmTemperate, 2),
-            Math.Round((biomes.TryGetValue(BiomeType.DeciduousForest, out value) ? value : 0) * 100.0 / landCoords, 2));
+            Math.Round((biomes.TryGetValue(BiomeType.DeciduousForest, out value) ? value : 0) * 100.0 / landCoordinates, 2));
         sb.AppendLine();
         var tropical = 0;
         tropical += climates.TryGetValue(ClimateType.Subtropical, out value) ? value : 0;
         tropical += climates.TryGetValue(ClimateType.Tropical, out value) ? value : 0;
         tropical += climates.TryGetValue(ClimateType.Supertropical, out value) ? value : 0;
-        sb.AppendFormat("  Tropical:                {0}%", Math.Round(tropical * 100.0 / landCoords, 2));
+        sb.AppendFormat("  Tropical:                {0}%", Math.Round(tropical * 100.0 / landCoordinates, 2));
         sb.AppendLine();
         sb.AppendFormat("    Desert:                {0}% ({1}%)",
             tropical == 0 ? 0 : Math.Round(tropicalDeserts * 100.0 / tropical, 2),
-            Math.Round(tropicalDeserts * 100.0 / landCoords, 2));
+            Math.Round(tropicalDeserts * 100.0 / landCoordinates, 2));
         sb.AppendLine();
         sb.AppendFormat("    Savanna:               {0}% ({1}%)",
             tropical == 0 ? 0 : Math.Round((biomes.TryGetValue(BiomeType.Savanna, out value) ? value : 0) * 100.0 / tropical, 2),
-            Math.Round((biomes.TryGetValue(BiomeType.Savanna, out value) ? value : 0) * 100.0 / landCoords, 2));
+            Math.Round((biomes.TryGetValue(BiomeType.Savanna, out value) ? value : 0) * 100.0 / landCoordinates, 2));
         sb.AppendLine();
         sb.AppendFormat("    Monsoon Forest:        {0}% ({1}%)",
             tropical == 0 ? 0 : Math.Round((biomes.TryGetValue(BiomeType.MonsoonForest, out value) ? value : 0) * 100.0 / tropical, 2),
-            Math.Round((biomes.TryGetValue(BiomeType.MonsoonForest, out value) ? value : 0) * 100.0 / landCoords, 2));
+            Math.Round((biomes.TryGetValue(BiomeType.MonsoonForest, out value) ? value : 0) * 100.0 / landCoordinates, 2));
         sb.AppendLine();
-        var rainforest = (biomes.TryGetValue(BiomeType.RainForest, out value) ? value : 0) * 100.0 / landCoords;
+        var rainforest = (biomes.TryGetValue(BiomeType.RainForest, out value) ? value : 0) * 100.0 / landCoordinates;
         sb.AppendFormat("    Rain Forest:           {0}% ({1}%) ({2:+0.##;-0.##;on-targ\\et})",
             Math.Round(rainforest, 2),
             tropical == 0 ? 0 : Math.Round((biomes.TryGetValue(BiomeType.RainForest, out value) ? value : 0) * 100.0 / tropical, 2),
@@ -227,16 +227,16 @@ public class MappingTests
         Image<L16> elevationMap,
         Image<L16> precipitationMap,
         double normalizedSeaLevel,
-        int landCoords,
+        int landCoordinates,
         WeatherMaps maps,
         MapProjectionOptions options)
     {
-        sb.Append("Max precip: ")
+        sb.Append("Max precipitation: ")
             .Append(Math.Round(planet.Atmosphere.MaxPrecipitation, 3))
             .AppendLine("mm/hr");
 
         sb.AppendLine("Precipitation (average, land):");
-        if (landCoords == 0)
+        if (landCoordinates == 0)
         {
             sb.AppendLine("  No land.");
             return;
@@ -401,7 +401,7 @@ public class MappingTests
         sb.AppendLine();
     }
 
-    private static void AddTerrainString(StringBuilder sb, Planetoid planet, Image<L16> elevationMap, int landCoords)
+    private static void AddTerrainString(StringBuilder sb, Planetoid planet, Image<L16> elevationMap, int landCoordinates)
     {
         sb.AppendFormat("Sea Level:                 {0}m", Math.Round(planet.SeaLevel));
         sb.AppendLine();
@@ -409,8 +409,8 @@ public class MappingTests
         var elevationRange = planet.GetElevationRange(elevationMap);
         if (planet.Hydrosphere?.IsEmpty == false)
         {
-            var totalCoords = (decimal)(elevationMap.Width * elevationMap.Height);
-            var landProportion = landCoords / totalCoords;
+            var totalCoordinates = (decimal)(elevationMap.Width * elevationMap.Height);
+            var landProportion = landCoordinates / totalCoordinates;
             sb.AppendFormat("Land proportion:           {0}", Math.Round(landProportion, 2));
             sb.AppendLine();
             sb.AppendFormat("Water proportion:          {0}", Math.Round(1 - landProportion, 2));
@@ -600,7 +600,11 @@ public class MappingTests
         elevationMap.Dispose();
     }
 
-    private static void SurfaceMapping(MapProjectionOptions projection, string? filePrefix = null, string? fileSuffix = null, bool pregen = false)
+    private static void SurfaceMapping(
+        MapProjectionOptions projection,
+        string? filePrefix = null,
+        string? fileSuffix = null,
+        bool pregen = false)
     {
         var stopwatch1 = new Stopwatch();
         var stopwatch2 = new Stopwatch();
@@ -841,7 +845,7 @@ public class MappingTests
         if (projection.EqualArea)
         {
             var normalizedSeaLevel = planet.SeaLevel / planet.MaxElevation;
-            var landCoords = 0;
+            var landCoordinates = 0;
             if (planet.Hydrosphere?.IsEmpty == false)
             {
                 for (var x = 0; x < elevationMap.Width; x++)
@@ -851,7 +855,7 @@ public class MappingTests
                         var value = (2.0 * elevationMap[x, y].PackedValue / ushort.MaxValue) - 1;
                         if (value - normalizedSeaLevel > 0)
                         {
-                            landCoords++;
+                            landCoordinates++;
                         }
                     }
                 }
@@ -859,11 +863,11 @@ public class MappingTests
             var sb = new StringBuilder();
             AddTempString(sb, temperatureMap);
             sb.AppendLine();
-            AddTerrainString(sb, planet, elevationMap, landCoords);
+            AddTerrainString(sb, planet, elevationMap, landCoordinates);
             sb.AppendLine();
-            AddClimateString(sb, elevationMap, normalizedSeaLevel, landCoords, weatherMaps);
+            AddClimateString(sb, elevationMap, normalizedSeaLevel, landCoordinates, weatherMaps);
             sb.AppendLine();
-            AddPrecipitationString(sb, planet, elevationMap, precipitationMap, normalizedSeaLevel, landCoords, weatherMaps, projection);
+            AddPrecipitationString(sb, planet, elevationMap, precipitationMap, normalizedSeaLevel, landCoordinates, weatherMaps, projection);
             Console.WriteLine(sb.ToString());
         }
 

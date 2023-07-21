@@ -18,30 +18,20 @@
 /// <param name="ShadeMultiplier">
 /// Adjusts the intensity of all shading.
 /// </param>
-public record HillShadingOptions(
+public readonly record struct HillShadingOptions(
     bool ApplyToLand,
     bool ApplyToOcean,
     double ScaleFactor = 5,
     bool ScaleIsRelative = true,
     double ShadeMultiplier = 1.25)
 {
-    private double _scaleFactor = ScaleFactor;
     /// <summary>
     /// Controls the intensity of the shading relative to local slope.
     /// </summary>
-    public double ScaleFactor
-    {
-        get => _scaleFactor;
-        init => _scaleFactor = Math.Max(0, value);
-    }
+    public double ScaleFactor { get; init; } = Math.Max(0, ScaleFactor);
 
-    private double _shadeMultiplier = ShadeMultiplier;
     /// <summary>
     /// Adjusts the intensity of all shading.
     /// </summary>
-    public double ShadeMultiplier
-    {
-        get => _shadeMultiplier;
-        init => _shadeMultiplier = Math.Max(0, value);
-    }
+    public double ShadeMultiplier { get; init; } = Math.Max(0, ShadeMultiplier);
 }

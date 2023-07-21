@@ -1,6 +1,4 @@
-﻿using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using System.Runtime.Serialization;
+﻿using System.Text.Json.Serialization;
 using Tavenem.Chemistry;
 using Tavenem.Mathematics;
 using Tavenem.Universe.Climate;
@@ -11,93 +9,60 @@ namespace Tavenem.Universe.Maps;
 /// <summary>
 /// A collection of weather maps providing yearlong climate data.
 /// </summary>
-[Serializable]
-public readonly struct WeatherMaps : ISerializable
+/// <param name="Biome">The overall <see cref="BiomeType"/> of the area.</param>
+/// <param name="BiomeMap">
+/// A two-dimensional array corresponding to points on an equirectangular projected map of a
+/// terrestrial planet's surface. The first index corresponds to the X coordinate, and the
+/// second index corresponds to the Y coordinate. The values represent <see
+/// cref="BiomeType"/>.
+/// </param>
+/// <param name="Climate">
+/// The overall <see cref="ClimateType"/> of the area, based on average annual temperature.
+/// </param>
+/// <param name="ClimateMap">
+/// A two-dimensional array corresponding to points on an equirectangular projected map of a
+/// terrestrial planet's surface. The first index corresponds to the X coordinate, and the
+/// second index corresponds to the Y coordinate. The values represent <see
+/// cref="ClimateType"/>, based on average annual temperature.
+/// </param>
+/// <param name="SeaIceRangeMap">
+/// A two-dimensional array corresponding to points on an equirectangular projected map of a
+/// terrestrial planet's surface. The first index corresponds to the X coordinate, and the
+/// second index corresponds to the Y coordinate. The values represent the proportion of the
+/// year during which there is persistent sea ice.
+/// </param>
+[method: JsonConstructor]
+public readonly record struct WeatherMaps(
+    BiomeType Biome,
+    BiomeType[][] BiomeMap,
+    ClimateType Climate,
+    ClimateType[][] ClimateMap,
+    FloatRange[][] SeaIceRangeMap)
 {
-    /// <summary>
-    /// The overall <see cref="BiomeType"/> of the area.
-    /// </summary>
-    public BiomeType Biome { get; }
-
-    /// <summary>
-    /// A two-dimensional array corresponding to points on an equirectangular projected map of a
-    /// terrestrial planet's surface. The first index corresponds to the X coordinate, and the
-    /// second index corresponds to the Y coordinate. The values represent <see
-    /// cref="BiomeType"/>.
-    /// </summary>
-    public BiomeType[][] BiomeMap { get; }
-
-    /// <summary>
-    /// The overall <see cref="ClimateType"/> of the area, based on average annual temperature.
-    /// </summary>
-    public ClimateType Climate { get; }
-
-    /// <summary>
-    /// A two-dimensional array corresponding to points on an equirectangular projected map of a
-    /// terrestrial planet's surface. The first index corresponds to the X coordinate, and the
-    /// second index corresponds to the Y coordinate. The values represent <see
-    /// cref="ClimateType"/>, based on average annual temperature.
-    /// </summary>
-    public ClimateType[][] ClimateMap { get; }
-
-    /// <summary>
-    /// A two-dimensional array corresponding to points on an equirectangular projected map of a
-    /// terrestrial planet's surface. The first index corresponds to the X coordinate, and the
-    /// second index corresponds to the Y coordinate. The values represent the proportion of the
-    /// year during which there is persistent sea ice.
-    /// </summary>
-    public FloatRange[][] SeaIceRangeMap { get; }
-
     /// <summary>
     /// The length of the "X" (0-index) dimension of the maps.
     /// </summary>
-    [System.Text.Json.Serialization.JsonIgnore]
-    public int XLength { get; }
+    [JsonIgnore]
+    public int XLength { get; } = ClimateMap.Length != BiomeMap.Length
+        || SeaIceRangeMap.Length != BiomeMap.Length
+        ? throw new ArgumentException("All X lengths must be the same")
+        : BiomeMap.Length;
 
     /// <summary>
     /// The length of the "Y" (1-index) dimension of the maps.
     /// </summary>
-    [System.Text.Json.Serialization.JsonIgnore]
-    public int YLength { get; }
-
-    /// <summary>
-    /// Initializes a new instance of <see cref="WeatherMaps"/>.
-    /// </summary>
-    /// <param name="biome">A biome.</param>
-    /// <param name="biomeMap">A biome map.</param>
-    /// <param name="climate">A climate.</param>
-    /// <param name="climateMap">A climate map.</param>
-    /// <param name="seaIceRangeMap">A sea ice range map.</param>
-    [System.Text.Json.Serialization.JsonConstructor]
-    public WeatherMaps(
-        BiomeType biome,
-        BiomeType[][] biomeMap,
-        ClimateType climate,
-        ClimateType[][] climateMap,
-        FloatRange[][] seaIceRangeMap)
+    [JsonIgnore]
+    public int YLength { get; } = BiomeMap switch
     {
-        XLength = biomeMap.Length;
-        if (climateMap.Length != XLength
-            || seaIceRangeMap.Length != XLength)
-        {
-            throw new ArgumentException("All X lengths must be the same");
-        }
-
-        YLength = XLength == 0 ? 0 : biomeMap[0].Length;
-
-        if (XLength != 0
-            && (climateMap[0].Length != YLength
-            || seaIceRangeMap[0].Length != YLength))
-        {
-            throw new ArgumentException("All Y lengths must be the same");
-        }
-
-        Biome = biome;
-        BiomeMap = biomeMap;
-        Climate = climate;
-        ClimateMap = climateMap;
-        SeaIceRangeMap = seaIceRangeMap;
-    }
+        { Length: var l } when l != ClimateMap.Length
+            || l != SeaIceRangeMap.Length
+            => throw new ArgumentException("All X lengths must be the same"),
+        { Length: 0 } => 0,
+        [var first, ..] when first.Length != ClimateMap[0].Length
+            || first.Length != SeaIceRangeMap[0].Length
+            => throw new ArgumentException("All Y lengths must be the same"),
+        _ => BiomeMap[0].Length,
+    };
 
     /// <summary>
     /// Initializes a new instance of <see cref="WeatherMaps"/>.
@@ -119,7 +84,12 @@ public readonly struct WeatherMaps : ISerializable
         Image<L16> summerTemperatureMap,
         Image<L16> precipitationMap,
         int resolution,
-        MapProjectionOptions? options = null)
+        MapProjectionOptions? options = null) : this(
+            BiomeType.None,
+            Array.Empty<BiomeType[]>(),
+            ClimateType.None,
+            Array.Empty<ClimateType[]>(),
+            Array.Empty<FloatRange[]>())
     {
         var projection = options ?? MapProjectionOptions.Default;
 
@@ -164,7 +134,9 @@ public readonly struct WeatherMaps : ISerializable
         {
             for (var y = 0; y < resolution; y++)
             {
+#pragma warning disable CA1861 // Avoid constant arrays as arguments; array is mutated
                 normalizedElevations[y] = new double[xLength];
+#pragma warning restore CA1861 // Avoid constant arrays as arguments
 
                 var latitude = projection.EqualArea
                     ? SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(y, resolution, scale, projection)
@@ -241,11 +213,11 @@ public readonly struct WeatherMaps : ISerializable
         var minTemperature = 5000.0f;
         var maxTemperature = 0.0f;
         var totalTemperature = 0.0f;
-        var totalPrecipiation = 0.0;
+        var totalPrecipitation = 0.0;
         winterTemperatureMap.ProcessPixelRows(
             summerTemperatureMap,
             precipitationMap,
-            (winterMap, summerMap, precipMap) =>
+            (winterMap, summerMap, precipitationMap) =>
             {
                 for (var y = 0; y < resolution; y++)
                 {
@@ -299,7 +271,7 @@ public readonly struct WeatherMaps : ISerializable
                         precipitationY = SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, precipitationMap.Height, precipitationScale, projection);
                     }
 
-                    var precipitationSpan = precipMap.GetRowSpan(precipitationY);
+                    var precipitationSpan = precipitationMap.GetRowSpan(precipitationY);
 
                     for (var x = 0; x < xLength; x++)
                     {
@@ -313,9 +285,9 @@ public readonly struct WeatherMaps : ISerializable
                         maxTemperature = Math.Max(maxTemperature, Math.Max(winterTemperature, summerTemperature));
                         totalTemperature += (minTemperature + maxTemperature) / 2;
 
-                        var precipValue = precipitationSpan[precipitationX].GetValueFromPixel_Pos();
-                        var precipitation = precipValue * planet.Atmosphere.MaxPrecipitation;
-                        totalPrecipiation += precipValue;
+                        var precipitationValue = precipitationSpan[precipitationX].GetValueFromPixel_Pos();
+                        var precipitation = precipitationValue * planet.Atmosphere.MaxPrecipitation;
+                        totalPrecipitation += precipitationValue;
 
                         climateMap[x][y] = Universe.Climate.Climate.GetClimateType(new FloatRange(
                             Math.Min(winterTemperature, summerTemperature),
@@ -374,32 +346,83 @@ public readonly struct WeatherMaps : ISerializable
         ClimateMap = climateMap;
         SeaIceRangeMap = seaIceRangeMap;
         Climate = Universe.Climate.Climate.GetClimateType(new FloatRange(minTemperature, totalTemperature / (xLength * resolution), maxTemperature));
-        var humidity = Universe.Climate.Climate.GetHumidityType(totalPrecipiation / (xLength * resolution) * planet.Atmosphere.MaxPrecipitation);
+        var humidity = Universe.Climate.Climate.GetHumidityType(totalPrecipitation / (xLength * resolution) * planet.Atmosphere.MaxPrecipitation);
         Biome = Universe.Climate.Climate.GetBiomeType(Climate, humidity, totalElevation / (xLength * resolution) * planet.MaxElevation);
     }
 
-    private WeatherMaps(SerializationInfo info, StreamingContext context) : this(
-        (BiomeType?)info.GetValue(nameof(Biome), typeof(BiomeType)) ?? BiomeType.None,
-        (BiomeType[][]?)info.GetValue(nameof(BiomeMap), typeof(BiomeType[][])) ?? Array.Empty<BiomeType[]>(),
-        (ClimateType?)info.GetValue(nameof(Climate), typeof(ClimateType)) ?? ClimateType.None,
-        (ClimateType[][]?)info.GetValue(nameof(ClimateMap), typeof(ClimateType[][])) ?? Array.Empty<ClimateType[]>(),
-        (FloatRange[][]?)info.GetValue(nameof(SeaIceRangeMap), typeof(FloatRange[][])) ?? Array.Empty<FloatRange[]>())
-    { }
+    /// <inheritdoc />
+    public bool Equals(WeatherMaps other)
+        => Biome == other.Biome
+        && Climate.Equals(other.Climate)
+        && WeatherArraysEqual(BiomeMap, other.BiomeMap)
+        && WeatherArraysEqual(ClimateMap, other.ClimateMap)
+        && WeatherArraysEqual(SeaIceRangeMap, other.SeaIceRangeMap);
 
-    /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
-    /// serialize the target object.</summary>
-    /// <param name="info">The <see cref="SerializationInfo"></see> to populate with
-    /// data.</param>
-    /// <param name="context">The destination (see <see cref="StreamingContext"></see>) for this
-    /// serialization.</param>
-    /// <exception cref="System.Security.SecurityException">The caller does not have the
-    /// required permission.</exception>
-    public void GetObjectData(SerializationInfo info, StreamingContext context)
+    /// <summary>
+    /// Indicates whether the current object is equal to another object of the same type.
+    /// </summary>
+    /// <param name="other">An object to compare with this object.</param>
+    /// <returns>
+    /// <see langword="true"/> if the current object is equal to the other parameter; otherwise,
+    /// <see langword="false"/>.
+    /// </returns>
+    public bool Equals(WeatherMaps? other)
+        => other.HasValue && Equals(other.Value);
+
+    /// <inheritdoc />
+    public override int GetHashCode()
     {
-        info.AddValue(nameof(Biome), Biome);
-        info.AddValue(nameof(BiomeMap), BiomeMap);
-        info.AddValue(nameof(Climate), Climate);
-        info.AddValue(nameof(ClimateMap), ClimateMap);
-        info.AddValue(nameof(SeaIceRangeMap), SeaIceRangeMap);
+        var hashCode = new HashCode();
+        hashCode.Add(Biome.GetHashCode());
+        hashCode.Add(Climate.GetHashCode());
+        hashCode.Add(GetWeatherArrayHashCode(BiomeMap));
+        hashCode.Add(GetWeatherArrayHashCode(ClimateMap));
+        hashCode.Add(GetWeatherArrayHashCode(SeaIceRangeMap));
+        return hashCode.ToHashCode();
+    }
+
+    private static int GetWeatherArrayHashCode<T>(T[][] array)
+    {
+        if (array is null)
+        {
+            return 0;
+        }
+        unchecked
+        {
+            var value = array.Length;
+            var outerCount = Math.Min(5, array.Length);
+            for (var i = 0; i < outerCount; i++)
+            {
+                value = (value * 367) ^ array[i].Length;
+                var innerCount = Math.Min(5, array[i].Length);
+                for (var j = 0; j < innerCount; j++)
+                {
+                    value = (value * 367) ^ (array[i][j]?.GetHashCode() ?? 0);
+                }
+            }
+            return 367 * value;
+        }
+    }
+
+    private static bool WeatherArraysEqual<T>(T[][] first, T[][] second)
+    {
+        if (first is null
+            || second is null)
+        {
+            return false;
+        }
+        if (first.Length != second.Length)
+        {
+            return false;
+        }
+        for (var i = 0; i < first.Length; i++)
+        {
+            if (first[i].Length != second[i].Length
+                || !first[i].SequenceEqual(second[i]))
+            {
+                return false;
+            }
+        }
+        return true;
     }
 }

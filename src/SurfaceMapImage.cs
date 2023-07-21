@@ -1,7 +1,4 @@
-﻿using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
-using SixLabors.ImageSharp.Processing.Processors.Transforms;
+﻿using SixLabors.ImageSharp.Processing.Processors.Transforms;
 using System.Runtime.CompilerServices;
 using Tavenem.Chemistry;
 using Tavenem.Mathematics;
@@ -408,8 +405,8 @@ public static class SurfaceMapImage
         var originalOptions = originalProjection ?? MapProjectionOptions.Default;
         var xResolution = (int)Math.Floor(resolution * newProjection?.AspectRatio ?? 2);
         if (newProjection?.Range.HasValue != true
-            || newProjection.Range!.Value <= 0
-            || newProjection.Range.Value >= Math.PI)
+            || newProjection.Value.Range!.Value == 0
+            || newProjection.Value.Range.Value == Math.PI)
         {
             if (originalOptions.Range > 0
                 && originalOptions.Range.Value < Math.PI)
@@ -571,12 +568,12 @@ public static class SurfaceMapImage
         var scale = SurfaceMap.GetScale(yLength, options.Range, options.EqualArea);
         var tScale = SurfaceMap.GetScale(tempYLength, options.Range, options.EqualArea);
         var xToX = new Dictionary<int, int>();
-        snowImg.ProcessPixelRows(precipitationMap, temperatureMap, (snow, precip, temp) =>
+        snowImg.ProcessPixelRows(precipitationMap, temperatureMap, (snow, precipitation, temp) =>
         {
             for (var y = 0; y < yLength; y++)
             {
                 var snowSpan = snow.GetRowSpan(y);
-                var precipSpan = precip.GetRowSpan(y);
+                var precipitationSpan = precipitation.GetRowSpan(y);
                 int tY;
                 if (match)
                 {
@@ -611,7 +608,7 @@ public static class SurfaceMapImage
                     }
                     if (tSpan[tX].PackedValue < 17901) // 273.15K / 1000 * ushort.MaxValue
                     {
-                        snowSpan[x] = new L16((ushort)Math.Min(ushort.MaxValue, precipSpan[x].PackedValue * Atmosphere.SnowToRainRatio));
+                        snowSpan[x] = new L16((ushort)Math.Min(ushort.MaxValue, precipitationSpan[x].PackedValue * Atmosphere.SnowToRainRatio));
                     }
                 }
             }
@@ -2511,7 +2508,7 @@ public static class SurfaceMapImage
     /// Bytes representing the red, green, and blue values of a pixel corresponding to the
     /// normalized elevation value provided.
     /// </returns>
-    public static Rgba32 ToElevationColor(this double value) => InterpColorRange(value, _ElevationColorProfile);
+    public static Rgba32 ToElevationColor(this double value) => InterpolateColorRange(value, _ElevationColorProfile);
 
     /// <summary>
     /// <para>
@@ -2535,7 +2532,7 @@ public static class SurfaceMapImage
     /// <returns>
     /// An <see cref="Rgba32"/> pixel corresponding to the normalized elevation value provided.
     /// </returns>
-    public static Rgba32 ToElevationColor(this L16 value, Planetoid planet) => InterpColorRange_PosNeg(
+    public static Rgba32 ToElevationColor(this L16 value, Planetoid planet) => InterpolateColorRange_PosNeg(
         value,
         v => v - planet.NormalizedSeaLevel,
         _ElevationColorProfile);
@@ -2560,7 +2557,7 @@ public static class SurfaceMapImage
     /// <returns>
     /// An <see cref="Rgba32"/> pixel corresponding to the precipitation value provided.
     /// </returns>
-    public static Rgba32 ToPrecipitationColor(this L16 value) => InterpColorRange_Pos(value, _PrecipitationColorProfile);
+    public static Rgba32 ToPrecipitationColor(this L16 value) => InterpolateColorRange_Pos(value, _PrecipitationColorProfile);
 
     /// <summary>
     /// <para>
@@ -2583,7 +2580,7 @@ public static class SurfaceMapImage
     /// <returns>
     /// An <see cref="Rgba32"/> pixel corresponding to the temperature value provided.
     /// </returns>
-    public static Rgba32 ToTemperatureColor(this L16 value) => InterpColorRange_Pos(
+    public static Rgba32 ToTemperatureColor(this L16 value) => InterpolateColorRange_Pos(
         value,
         v => (v * TemperatureScaleFactor) - 273.15,
         _TemperatureColorProfile);
@@ -2786,16 +2783,6 @@ public static class SurfaceMapImage
         {
             throw new ArgumentOutOfRangeException(nameof(resolution), $"The value of {nameof(resolution)} cannot exceed 32767.");
         }
-        if (!options.Range.HasValue
-            || options.Range.Value <= 0
-            || options.Range.Value >= Math.PI)
-        {
-            if (otherOptions.Range > 0
-                && otherOptions.Range.Value < Math.PI)
-            {
-                throw new ArgumentException("Target projection specifies latitudes or longitudes not included in original projection");
-            }
-        }
 
         var xResolution = (int)Math.Floor(resolution * options.AspectRatio);
         var noOtherMaps = otherMaps.Length == 0;
@@ -2809,41 +2796,6 @@ public static class SurfaceMapImage
             ? scale
             : SurfaceMap.GetScale(otherResolution, options.Range);
         var stretch = scale / options.ScaleFactor;
-
-        var (newNorthLatitude, newWestLongitude, newSouthLatitude, newEastLongitude) = GetBounds(options);
-        var (originalXMin, originalYMin) = otherOptions.EqualArea
-            ? SurfaceMap.GetCylindricalEqualAreaProjectionFromLatLongWithScale(
-                newNorthLatitude, newWestLongitude,
-                otherXResolution,
-                otherResolution,
-                otherScale,
-                otherOptions)
-            : SurfaceMap.GetEquirectangularProjectionFromLatLongWithScale(
-                newNorthLatitude, newWestLongitude,
-                otherXResolution,
-                otherResolution,
-                otherScale,
-                otherOptions);
-        var (originalXMax, originalYMax) = otherOptions.EqualArea
-            ? SurfaceMap.GetCylindricalEqualAreaProjectionFromLatLongWithScale(
-                newSouthLatitude, newEastLongitude,
-                otherXResolution,
-                otherResolution,
-                otherScale,
-                otherOptions)
-            : SurfaceMap.GetEquirectangularProjectionFromLatLongWithScale(
-                newSouthLatitude, newEastLongitude,
-                otherXResolution,
-                otherResolution,
-                otherScale,
-                otherOptions);
-        if (originalXMin < 0
-            || originalYMin < 0
-            || originalXMax > otherXResolution
-            || originalYMax > otherResolution)
-        {
-            throw new ArgumentException("Target projection specifies latitudes or longitudes not included in original projection");
-        }
 
         var first = new Image<L16>(xResolution, resolution);
         var second = new Image<L16>(xResolution, resolution);
@@ -2907,6 +2859,10 @@ public static class SurfaceMapImage
                     var (firstValue, secondValue) = func(
                         latitude, longitude,
                         noOtherMaps
+                            || otherX < 0
+                            || otherX >= otherXResolution
+                            || otherY < 0
+                            || otherY >= otherResolution
                             ? 0
                             : InterpolateAmongImages(otherMaps, proportionOfYear, otherX, otherY));
                     firstSpan[x] = new L16(DoubleToLuminance(firstValue));
@@ -3034,41 +2990,41 @@ public static class SurfaceMapImage
         var upRight = elevationMap[x + 1, y - 1].PackedValue;
         var downLeft = elevationMap[x - 1, y + 1].PackedValue;
         var downRight = elevationMap[x + 1, y + 1].PackedValue;
-        var dzdx = ((upRight
+        var dZdX = ((upRight
             + (2 * elevationMap[x + 1, y].PackedValue)
             + downRight
             - upLeft
             - (2 * elevationMap[x - 1, y].PackedValue)
             - downLeft)
             / (4.0 * ushort.MaxValue)).Clamp(-1, 1);
-        var dzdy = ((downLeft
+        var dZdY = ((downLeft
             + (2 * elevationMap[x, y + 1].PackedValue)
             + downRight
             - upLeft
             - (2 * elevationMap[x, y - 1].PackedValue)
             - upRight)
             / (4.0 * ushort.MaxValue)).Clamp(0, 1);
-        var scale = options!.ScaleIsRelative
-            ? options.ScaleFactor * (1 + (options.ScaleFactor * Math.Abs(elevationMap[x, y].GetValueFromPixel_PosNeg())))
-            : options.ScaleFactor;
-        var slope = Math.Atan(scale * Math.Sqrt((dzdx * dzdx) + (dzdy * dzdy)));
+        var scale = options!.Value.ScaleIsRelative
+            ? options.Value.ScaleFactor * (1 + (options.Value.ScaleFactor * Math.Abs(elevationMap[x, y].GetValueFromPixel_PosNeg())))
+            : options.Value.ScaleFactor;
+        var slope = Math.Atan(scale * Math.Sqrt((dZdX * dZdX) + (dZdY * dZdY)));
         double aspectTerm;
-        if (dzdx.IsNearlyZero())
+        if (dZdX.IsNearlyZero())
         {
-            aspectTerm = dzdy.IsNearlyZero() || dzdy < 0
+            aspectTerm = dZdY.IsNearlyZero() || dZdY < 0
                 ? -_SinQuarterPiSquared
                 : _SinQuarterPiSquared;
         }
         else
         {
-            var aspect = Math.Atan2(dzdy, -dzdx);
+            var aspect = Math.Atan2(dZdY, -dZdX);
             if (aspect < 0)
             {
                 aspect += DoubleConstants.TwoPi;
             }
             aspectTerm = _SinQuarterPi * Math.Cos(DoubleConstants.ThreeQuartersPi - aspect);
         }
-        var factor = ((_SinQuarterPi * Math.Cos(slope)) + (Math.Sin(slope) * aspectTerm)) * options.ShadeMultiplier;
+        var factor = ((_SinQuarterPi * Math.Cos(slope)) + (Math.Sin(slope) * aspectTerm)) * options.Value.ShadeMultiplier;
         return new Rgba32(
             (byte)(pixel.R * factor).Clamp(0, 255),
             (byte)(pixel.G * factor).Clamp(0, 255),
@@ -3125,10 +3081,10 @@ public static class SurfaceMapImage
             maxLon);
     }
 
-    private static byte InterpColor(double value, double lowValue, double highValue, double lowColor, double highColor)
+    private static byte InterpolateColor(double value, double lowValue, double highValue, double lowColor, double highColor)
         => (byte)lowColor.Lerp(highColor, (value - lowValue) / (highValue - lowValue));
 
-    private static Rgba32 InterpColorRange(double value, (double max, (double r, double g, double b) color)[] ranges)
+    private static Rgba32 InterpolateColorRange(double value, (double max, (double r, double g, double b) color)[] ranges)
     {
         for (var i = 0; i < ranges.Length; i++)
         {
@@ -3142,9 +3098,9 @@ public static class SurfaceMapImage
                         (byte)ranges[i].color.b.Clamp(0, 255));
                 }
                 return new Rgba32(
-                    InterpColor(value, ranges[i - 1].max, ranges[i].max, ranges[i - 1].color.r, ranges[i].color.r),
-                    InterpColor(value, ranges[i - 1].max, ranges[i].max, ranges[i - 1].color.g, ranges[i].color.g),
-                    InterpColor(value, ranges[i - 1].max, ranges[i].max, ranges[i - 1].color.b, ranges[i].color.b));
+                    InterpolateColor(value, ranges[i - 1].max, ranges[i].max, ranges[i - 1].color.r, ranges[i].color.r),
+                    InterpolateColor(value, ranges[i - 1].max, ranges[i].max, ranges[i - 1].color.g, ranges[i].color.g),
+                    InterpolateColor(value, ranges[i - 1].max, ranges[i].max, ranges[i - 1].color.b, ranges[i].color.b));
             }
         }
         return new Rgba32(
@@ -3153,20 +3109,20 @@ public static class SurfaceMapImage
             (byte)ranges[^1].color.b.Clamp(0, 255));
     }
 
-    private static Rgba32 InterpColorRange_Pos(L16 value, (double max, (double r, double g, double b) color)[] ranges)
-        => InterpColorRange(value.GetValueFromPixel_Pos(), ranges);
+    private static Rgba32 InterpolateColorRange_Pos(L16 value, (double max, (double r, double g, double b) color)[] ranges)
+        => InterpolateColorRange(value.GetValueFromPixel_Pos(), ranges);
 
-    private static Rgba32 InterpColorRange_Pos(
+    private static Rgba32 InterpolateColorRange_Pos(
         L16 value,
         Func<double, double> transform,
         (double max, (double r, double g, double b) color)[] ranges)
-        => InterpColorRange(transform(value.GetValueFromPixel_Pos()), ranges);
+        => InterpolateColorRange(transform(value.GetValueFromPixel_Pos()), ranges);
 
-    private static Rgba32 InterpColorRange_PosNeg(
+    private static Rgba32 InterpolateColorRange_PosNeg(
         L16 value,
         Func<double, double> transform,
         (double max, (double r, double g, double b) color)[] ranges)
-        => InterpColorRange(transform(value.GetValueFromPixel_PosNeg()), ranges);
+        => InterpolateColorRange(transform(value.GetValueFromPixel_PosNeg()), ranges);
 
     private static double LatitudeBounded(double value)
     {

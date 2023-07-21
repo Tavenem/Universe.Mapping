@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.0-preview
+### Added
+- Source generated (de)serialization support
+### Changed
+- Update to .NET 8 preview
+### Removed
+- Support for non-JSON serialization
+
 ## 0.6.2-preview
 ### Changed
 - Update to .NET 7

@@ -1,6 +1,4 @@
-﻿using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using System.Numerics;
+﻿using System.Numerics;
 using Tavenem.Chemistry;
 using Tavenem.Mathematics;
 using Tavenem.Time;
@@ -248,12 +246,28 @@ public static class PlanetoidMap
             return SurfaceMapImage.GenerateZeroMapImage(resolution, options, true);
         }
 
-        var noise1 = new FastNoise(planet.Seed1, 0.8, FastNoise.NoiseType.SimplexFractal, octaves: 6);
-        var noise2 = new FastNoise(planet.Seed2, 0.6, FastNoise.NoiseType.SimplexFractal, FastNoise.FractalType.Billow, octaves: 6);
-        var noise3 = new FastNoise(planet.Seed3, 1.2, FastNoise.NoiseType.Simplex);
+        var noise1 = new FastNoise(
+            planet.SeedArray[0],
+            0.8,
+            FastNoise.NoiseType.SimplexFractal,
+            octaves: 6);
+        var noise2 = new FastNoise(
+            planet.SeedArray[1],
+            0.6,
+            FastNoise.NoiseType.SimplexFractal,
+            FastNoise.FractalType.Billow,
+            octaves: 6);
+        var noise3 = new FastNoise(
+            planet.SeedArray[2],
+            1.2,
+            FastNoise.NoiseType.Simplex);
 
         return SurfaceMapImage.GenerateMapImage(
-                (lat, lon) => GetElevationNoise(noise1, noise2, noise3, planet.LatitudeAndLongitudeToDoubleVector(lat, lon)),
+                (lat, lon) => GetElevationNoise(
+                    noise1,
+                    noise2,
+                    noise3,
+                    planet.LatitudeAndLongitudeToDoubleVector(lat, lon)),
                 resolution,
                 options,
                 true);
@@ -281,19 +295,18 @@ public static class PlanetoidMap
     /// </summary>
     /// <param name="planet">The planet being mapped.</param>
     /// <param name="winterTemperatures">A winter temperature map.</param>
-    /// <param name="summerTemperatues">A summer temperature map.</param>
+    /// <param name="summerTemperatures">A summer temperature map.</param>
     /// <param name="resolution">The vertical resolution.</param>
     /// <param name="steps">
-    /// The number of maps to generate internally (representing evenly spaced "seasons" during a year,
-    /// starting and ending at the winter solstice in the northern hemisphere).
+    /// The number of maps to generate internally (representing evenly spaced "seasons" during a
+    /// year, starting and ending at the winter solstice in the northern hemisphere).
     /// </param>
     /// <param name="temperatureProjection">
     /// <para>
     /// The map projection of the temperature maps. They must be the same.
     /// </para>
     /// <para>
-    /// If left <see langword="null"/> an equirectangular projection of the full globe is
-    /// assumed.
+    /// If left <see langword="null"/> an equirectangular projection of the full globe is assumed.
     /// </para>
     /// </param>
     /// <param name="projection">
@@ -301,19 +314,23 @@ public static class PlanetoidMap
     /// The map projection options used.
     /// </para>
     /// <para>
-    /// If left <see langword="null"/> an equirectangular projection of the full globe is
-    /// produced.
+    /// If left <see langword="null"/> an equirectangular projection of the full globe is produced.
+    /// </para>
+    /// <para>
+    /// Must not have a greater <see cref="MapProjectionOptions.Range"/> than <paramref
+    /// name="temperatureProjection"/>, which would require deriving from values not represented in
+    /// the source maps.
     /// </para>
     /// </param>
     /// <returns>
-    /// A set of precipitation and snowfall map images. Pixel luminosity indicates
-    /// precipitation in mm/hr, relative to the <see cref="Atmosphere.MaxPrecipitation"/> of
-    /// this planet's <see cref="Atmosphere"/>.
+    /// A set of precipitation and snowfall map images. Pixel luminosity indicates precipitation in
+    /// mm/hr, relative to the <see cref="Atmosphere.MaxPrecipitation"/> of this planet's <see
+    /// cref="Atmosphere"/>.
     /// </returns>
     public static (Image<L16>[] precipitationMaps, Image<L16>[] snowfallMaps) GetPrecipitationAndSnowfallMaps(
         this Planetoid planet,
         Image<L16> winterTemperatures,
-        Image<L16> summerTemperatues,
+        Image<L16> summerTemperatures,
         int resolution,
         int steps,
         MapProjectionOptions? temperatureProjection = null,
@@ -333,8 +350,8 @@ public static class PlanetoidMap
             return (precipitationMaps, snowMaps);
         }
 
-        var noise1 = new FastNoise(planet.Seed4, 1.0, FastNoise.NoiseType.Simplex);
-        var noise2 = new FastNoise(planet.Seed5, 3.0, FastNoise.NoiseType.SimplexFractal, octaves: 3);
+        var noise1 = new FastNoise(planet.SeedArray[3], 1.0, FastNoise.NoiseType.Simplex);
+        var noise2 = new FastNoise(planet.SeedArray[4], 3.0, FastNoise.NoiseType.SimplexFractal, octaves: 3);
 
         var proportionOfYear = 1f / steps;
         var proportionOfYearAtMidpoint = 0f;
@@ -346,7 +363,7 @@ public static class PlanetoidMap
         {
             var solarDeclination = planet.GetSolarDeclination(trueAnomaly);
             (precipitationMaps[i], snowMaps[i]) = SurfaceMapImage.GenerateMapImages(
-                new[] { winterTemperatures, summerTemperatues },
+                new[] { winterTemperatures, summerTemperatures },
                 (lat, lon, temperature) =>
                 {
                     var precipitation = planet.GetPrecipitationNoise(
@@ -772,7 +789,7 @@ public static class PlanetoidMap
         // Relative humidity is the Hadley cell value added to the random value. Range ~-2.5-~36.85.
         var relativeHumidity = r + hadleyValue;
 
-        // In the range betwen 32K and 48K below freezing, the value is scaled down; below that
+        // In the range between 32K and 48K below freezing, the value is scaled down; below that
         // range it is cut off completely; above it is unchanged.
         relativeHumidity *= ((temperature - _LowTemp) / 16).Clamp(0, 1);
 
