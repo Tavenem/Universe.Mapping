@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0
+### Added
+- Initial production release
+
 ## 0.7.0-preview
 ### Added
 - Source generated (de)serialization support
