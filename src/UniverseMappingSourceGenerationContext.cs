@@ -9,5 +9,4 @@ namespace Tavenem.Universe.Maps;
 [JsonSerializable(typeof(MapProjectionOptions))]
 [JsonSerializable(typeof(WeatherMaps))]
 public partial class UniverseMappingSourceGenerationContext
-    : JsonSerializerContext
-{ }
+    : JsonSerializerContext;

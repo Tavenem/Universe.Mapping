@@ -1,4 +1,6 @@
-﻿using System.Numerics;
+﻿using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+using System.Numerics;
 using Tavenem.Chemistry;
 using Tavenem.Mathematics;
 using Tavenem.Time;
@@ -363,7 +365,7 @@ public static class PlanetoidMap
         {
             var solarDeclination = planet.GetSolarDeclination(trueAnomaly);
             (precipitationMaps[i], snowMaps[i]) = SurfaceMapImage.GenerateMapImages(
-                new[] { winterTemperatures, summerTemperatures },
+                [winterTemperatures, summerTemperatures],
                 (lat, lon, temperature) =>
                 {
                     var precipitation = planet.GetPrecipitationNoise(

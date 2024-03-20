@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1
+### Updated
+- Update dependencies
+
 ## 1.0
 ### Added
 - Initial production release

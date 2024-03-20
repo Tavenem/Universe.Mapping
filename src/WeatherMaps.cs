@@ -1,4 +1,6 @@
-﻿using System.Text.Json.Serialization;
+﻿using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+using System.Text.Json.Serialization;
 using Tavenem.Chemistry;
 using Tavenem.Mathematics;
 using Tavenem.Universe.Climate;
@@ -86,10 +88,10 @@ public readonly record struct WeatherMaps(
         int resolution,
         MapProjectionOptions? options = null) : this(
             BiomeType.None,
-            Array.Empty<BiomeType[]>(),
+            [],
             ClimateType.None,
-            Array.Empty<ClimateType[]>(),
-            Array.Empty<FloatRange[]>())
+            [],
+            [])
     {
         var projection = options ?? MapProjectionOptions.Default;
 
@@ -134,9 +136,7 @@ public readonly record struct WeatherMaps(
         {
             for (var y = 0; y < resolution; y++)
             {
-#pragma warning disable CA1861 // Avoid constant arrays as arguments; array is mutated
                 normalizedElevations[y] = new double[xLength];
-#pragma warning restore CA1861 // Avoid constant arrays as arguments
 
                 var latitude = projection.EqualArea
                     ? SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(y, resolution, scale, projection)

@@ -1,4 +1,7 @@
-﻿using SixLabors.ImageSharp.Processing.Processors.Transforms;
+﻿using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
+using SixLabors.ImageSharp.Processing.Processors.Transforms;
 using System.Runtime.CompilerServices;
 using Tavenem.Chemistry;
 using Tavenem.Mathematics;
@@ -17,7 +20,7 @@ public static class SurfaceMapImage
     /// </summary>
     public const int TemperatureScaleFactor = 1000;
 
-    private static readonly (double, (double, double, double))[] _ElevationColorProfile = new (double, (double, double, double))[] {
+    private static readonly (double, (double, double, double))[] _ElevationColorProfile = [
         (-1, (42, 72, 84)),
         (-0.36, (146, 208, 233)),
         (-0.3, (160, 209, 242)),
@@ -47,8 +50,8 @@ public static class SurfaceMapImage
         (0.824, (203, 197, 197)),
         (0.94, (227, 225, 226)),
         (1, (255, 255, 255)),
-    };
-    private static readonly (double, (double, double, double))[] _PrecipitationColorProfile = new (double, (double, double, double))[] {
+    ];
+    private static readonly (double, (double, double, double))[] _PrecipitationColorProfile = [
         (0.01, (200, 215, 100)),
         (0.021, (170, 200, 80)),
         (0.043, (95, 170, 40)),
@@ -56,11 +59,11 @@ public static class SurfaceMapImage
         (0.169, (15, 90, 35)),
         (0.337, (15, 90, 80)),
         (0.674, (5, 110, 75)),
-    };
+    ];
     private static readonly IResampler _Resampler = KnownResamplers.Spline;
     private static readonly double _SinQuarterPi = Math.Sin(DoubleConstants.QuarterPi);
     private static readonly double _SinQuarterPiSquared = _SinQuarterPi * _SinQuarterPi;
-    private static readonly (double, (double, double, double))[] _TemperatureColorProfile = new (double, (double, double, double))[] {
+    private static readonly (double, (double, double, double))[] _TemperatureColorProfile = [
         (-60, (170, 170, 170)),
         (-40, (255, 255, 255)),
         (-30, (130, 10, 155)),
@@ -70,7 +73,7 @@ public static class SurfaceMapImage
         (20, (225, 215, 0)),
         (30, (110, 5, 0)),
         (40, (50, 0, 0)),
-    };
+    ];
 
     /// <summary>
     /// Produces an average of the given set of images.
