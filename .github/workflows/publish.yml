@@ -8,19 +8,18 @@ jobs:
     name: build, pack, publish, and release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # avoid shallow clone so nbgv can do its work.
 
       - uses: dotnet/nbgv@v0.4.2
         id: nbgv
       
-      - name: Setup .NET 8
+      - name: Setup .NET 9
         uses: actions/setup-dotnet@v1
         with:
           # Semantic version range syntax or exact version of a dotnet version
-          dotnet-version: '8.x'
-          include-prerelease: true
+          dotnet-version: '9.x'
 
       - name: Install dependencies
         run: dotnet restore -s https://api.nuget.org/v3/index.json -s https://www.myget.org/F/sixlabors/api/v3/index.json
@@ -62,7 +61,7 @@ jobs:
       - name: Release
         if: steps.nbgv.outputs.PublicRelease && steps.checkTag.outputs.exists != 'true'
         id: create_release
-        uses: softprops/action-gh-release@v2.0.4
+        uses: softprops/action-gh-release@v2.1.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         with:
