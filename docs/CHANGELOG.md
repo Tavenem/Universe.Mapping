@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3
+### Changed
+- Update to .NET 9
+### Updated
+- Update dependencies
+
 ## 1.2
 ### Updated
 - Update dependencies
